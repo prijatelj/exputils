@@ -95,6 +95,8 @@ def log_time(start_message, end_message=None, time_method=time):
         Message to be written to the log before timing begins.
     end_message : str, optional
         Message to be written to the log after timing ends.
+    time_method : callable
+        A callable that operate like python's `time.time()`
     """
     # TODO implement writing to a specific, different log file than current one
     logging.info(start_message)
