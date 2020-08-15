@@ -1,4 +1,9 @@
-"""Convenience functions for profiling python code."""
+"""Convenience functions for profiling python code. Please remember that both
+cProfile and profile packages exist in the Python standard library. They may be
+used to profile the compute times of all function calls within a program. These
+are for convenience and simplicity, especially when the recorded times will be
+used by the program, but the results from cProfile may also be used similarly.
+"""
 from datetime import datetime
 from contextlib import contextmanager
 import logging
