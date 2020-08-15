@@ -1,9 +1,11 @@
 from exputils import io
-# TODO from exputils.profile import time_call
-# TODO decide if kfold is necessary to install here.
+from exputils.profile import TimeData, time_func, proc_time_func, log_time
+# TODO decide if kfold is necessary to install here. Perhaps just an example.
 
 
-# Currently this is the best way to blacklist the file's imports, afaik
+# Currently this is the best way to blacklist the file's imports, afaik.
+# Basically everything in io is wanted in the namespace except for io's
+# imports.
 del io.argparse
 del io.deepcopy
 del io.datetime
