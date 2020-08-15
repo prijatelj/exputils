@@ -392,6 +392,7 @@ def add_hardware_args(parser):
 
 def set_hardware(args):
 
+    # TODO currently this is made for tensorflow 1.15, need to upgrade.
     # Set the Hardware in Keras / ~Tensorflow
     from keras import backend
     from tensorflow import Session
@@ -515,7 +516,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
 
     # Perform necessary default args setup
     set_logging(args.logging)
-    set_hardware(args.hardware)
+    #set_hardware(args.hardware)
 
     # TODO handle random seeds whenever it becomes a necessary thing in scripts
     # e.g. deterministic results instead of statistical reproduction.
