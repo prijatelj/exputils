@@ -435,6 +435,7 @@ def set_hardware(args):
     logging.info('Setting the default hardware configuration for %s', ml_libs)
 
     if 'jax' in ml_libs:
+        # TODO add option to provide default config, only add when necessary
         logging.error('JAX default hardware config not implemented yet.')
 
     if 'keras' in ml_libs:
@@ -452,7 +453,8 @@ def set_hardware(args):
                 args.gpus,
             )))
         else:
-            # TODO handle tf 2.+ config of hardware
+            # TODO handle tf 2.+ config of hardware. Add option to provide
+            # default config, only add when necessary
             logging.error('Tensorflow 2.+ default config not implemented yet.')
 
         # NOTE in the future, may have to add support for other Keras backends
@@ -462,15 +464,18 @@ def set_hardware(args):
         logging.info('Tensorflow version being used: %s', tf.__version__)
 
         if version.parse(tf.__version__) < version.parse('2.0.0'):
-            # TODO handle tf 1.15 config of hardware
+            # TODO handle tf 1.15 config of hardware. Add option to provide
+            # default config, only add when necessary
             logging.error(
                 'Tensorflow 1.15 default config not implemented w/o Keras.',
             )
         else:
-            # TODO handle tf 2.+ config of hardware
+            # TODO handle tf 2.+ config of hardware. Add option to provide
+            # default config, only add when necessary
             logging.error('Tensorflow 2.+ default config not implemented yet.')
 
-    if 'pytorch' in ml_libs or 'torch' in ml_libs:
+    if 'torch' in ml_libs or 'pytorch' in ml_libs:
+        # TODO add option to provide default config, only add when necessary
         logging.error('PyTorch default config not implemented yet.')
 
 
