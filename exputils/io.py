@@ -310,14 +310,15 @@ def add_logging_args(parser, log_level='WARNING'):
 
     log_args.add_argument(
         '--log_format',
-        default='%(asctime)s: %(levelname)s: %(message)s',
+        default='%(asctime)s; %(levelname)s: %(message)s',
         help='The logging format.',
         dest='logging.format',
     )
 
     log_args.add_argument(
         '--log_datefmt',
-        default='%Y-%m-%d_%H-%M-%S',
+        default=None,
+        #default='%Y-%m-%d_%H-%M-%S',
         help='The logging date/time format.',
         dest='logging.datefmt',
     )
@@ -421,7 +422,7 @@ def set_hardware(args):
         # Skip default hardware configuration
         return
 
-    if args.ml_libs == 'infer':
+    if 'infer' in args.ml_libs:
         # Find ml libraries are installed and initialize for all.
         ml_libs = []
 
