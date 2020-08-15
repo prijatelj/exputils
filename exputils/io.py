@@ -4,12 +4,14 @@ argparse setup with nested namespaces.
 import argparse
 from copy import deepcopy
 from datetime import datetime
+import importlib.util
 import json
 import logging
 import os
 import sys
 
 # TODO import h5py
+from packaging import version
 import numpy as np
 
 
@@ -55,17 +57,19 @@ class NestedNamespace(argparse.Namespace):
 
 
 class NumpyJSONEncoder(json.JSONEncoder):
-    """Encoder that handles common Numpy values, and general objects."""
+    """Encoder that handles common Numpy values, and general objects. This also
+    works for JSON serializing NestedNamespaces.
+    """
     def default(self, o):
         if isinstance(o, np.ndarray):
             return o.tolist()
-        elif isinstance(o, np.integer):
+        if isinstance(o, np.integer):
             return int(o)
-        elif isinstance(o, np.floating):
+        if isinstance(o, np.floating):
             return float(o)
-        else:
-            # TODO either remove or make some form of check if valid.
-            return o.__dict__
+
+        # TODO either remove or make some form of check if valid.
+        return o.__dict__
 
 
 def create_filepath(
@@ -212,24 +216,25 @@ def save_json(
             cls=NumpyJSONEncoder,
         )
 
+
 # TODO save hd5f
 
 
 def multi_typed_arg(*types):
     """Returns a callable to check if a variable is any of the types given."""
     # TODO needs unit tested
-    def multi_type_conversion(x):
-        for t in types:
+    def multi_type_conversion(value):
+        for arg_type in types:
             try:
-                return t(x)
-            except TypeError as e:
-                print(f'\n{e}\n')
-                pass
-            except ValueError as e:
-                print(f'\n{e}\n{type(e)}\n')
-        raise argparse.ArgumentTypeError(
-            f'Arg of {type(x)} is not convertable to any of the types: {types}'
-        )
+                return arg_type(value)
+            except TypeError as error:
+                print(f'\n{error}\n')
+            except ValueError as error:
+                print(f'\n{error}\n{type(error)}\n')
+        raise argparse.ArgumentTypeError(' '.join([
+            f'Arg of {type(value)} is not convertable to any of the types:',
+            f'{types}',
+        ]))
     return multi_type_conversion
 
 
@@ -327,7 +332,7 @@ def set_logging(log_args):
         raise ValueError(f'Invalid log level given: {log_args.level}')
 
     if log_args.filename is not None:
-        dir_part = log_file.rpartition(os.path.sep)[0]
+        dir_part = log_args.log_file.rpartition(os.path.sep)[0]
         os.makedirs(dir_part, exist_ok=True)
 
         logging.basicConfig(
@@ -338,7 +343,7 @@ def set_logging(log_args):
             datefmt=log_args.datefmt,
         )
 
-        if filemode == 'a':
+        if log_args.filemode == 'a':
             # Adding some form of line break for ease of searching logs.
             logging.info('Start of new logging session.')
     else:
@@ -389,28 +394,88 @@ def add_hardware_args(parser):
     #    help='The specifer(s) of which GPU(s) to be used.',
     #)
 
+    hardware.add_argument(
+        '--ml_libs',
+        default=None,
+        nargs='+',
+        help='The machine learning libraries to expect and to init hardware.',
+        choices=[
+            None,
+            'infer',
+            'jax',
+            'keras',
+            'tensorflow',
+            'tf',
+            'pytorch',
+            'torch',
+        ],
+        dest='hardware.ml_libs',
+    )
+
+
 
 def set_hardware(args):
+    """Sets machine learning librarys' default hardware configuration."""
+    # Setup list of ml_libs whose hardware is to be configured
+    if args.ml_libs is None:
+        # Skip default hardware configuration
+        return
 
-    # TODO currently this is made for tensorflow 1.15, need to upgrade.
-    # Set the Hardware in Keras / ~Tensorflow
-    from keras import backend
-    from tensorflow import Session
+    if args.ml_libs == 'infer':
+        # Find ml libraries are installed and initialize for all.
+        ml_libs = []
 
-    backend.set_session(Session(config=get_tf_config(
-        args.cpu_cores,
-        args.cpus,
-        args.gpus,
-    )))
+        for lib in ['jax', 'tensorflow', 'keras', 'torch']:
+            if importlib.util.find_spec(lib) is not None:
+                ml_libs.append(lib)
+    else:
+        ml_libs = args.ml_libs
 
-    # TODO generalize hardware
-    # TODO set hardware in Tensorflow only, PyTorch, JAX
+    logging.info('Setting the default hardware configuration for %s', ml_libs)
+
+    if 'jax' in ml_libs:
+        logging.error('JAX default hardware config not implemented yet.')
+
+    if 'keras' in ml_libs:
+        import keras
+        import tensorflow as tf
+
+        logging.info('Keras version being used: %s', keras.__version__)
+        logging.info('Tensorflow version being used: %s', tf.__version__)
+
+        if version.parse(tf.__version__) < version.parse('2.0.0'):
+            # Tensorflow 1.15 backend
+            keras.backend.set_session(tf.Session(config=get_tf_config(
+                args.cpu_cores,
+                args.cpus,
+                args.gpus,
+            )))
+        else:
+            # TODO handle tf 2.+ config of hardware
+            logging.error('Tensorflow 2.+ default config not implemented yet.')
+
+        # NOTE in the future, may have to add support for other Keras backends
+    elif 'tensorflow' in ml_libs or 'tf' in ml_libs:
+        import tensorflow as tf
+
+        logging.info('Tensorflow version being used: %s', tf.__version__)
+
+        if version.parse(tf.__version__) < version.parse('2.0.0'):
+            # TODO handle tf 1.15 config of hardware
+            logging.error(
+                'Tensorflow 1.15 default config not implemented w/o Keras.',
+            )
+        else:
+            # TODO handle tf 2.+ config of hardware
+            logging.error('Tensorflow 2.+ default config not implemented yet.')
+
+    if 'pytorch' in ml_libs or 'torch' in ml_libs:
+        logging.error('PyTorch default config not implemented yet.')
 
 
 def get_tf_config(cpu_cores=1, cpus=1, gpus=0, allow_soft_placement=True):
-
-    # TODO to be removed, or at least have the tf import be within this
-    # function so it only is a dependency when actually requested.
+    """Convenient creation of Tensorflow < 2.0 ConfigProto."""
+    # TODO Currently only tf 1.15, needs to be updated for 2.+
     from tensorflow import ConfigProto
 
     return ConfigProto(
@@ -429,8 +494,10 @@ def add_kfold_cv_args(parser):
 
     # TODO simplify this to the kfold params provided in exputils
 
-    kfold_cv = parser.add_argument_group('kfold_cv', 'Arguments pertaining to '
-        + 'the K fold Cross Validation for evaluating models.')
+    kfold_cv = parser.add_argument_group(
+        'kfold_cv',
+        'K fold cross validation args for evaluating models.',
+    )
 
     kfold_cv.add_argument(
         '--kfolds',
@@ -516,7 +583,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
 
     # Perform necessary default args setup
     set_logging(args.logging)
-    #set_hardware(args.hardware)
+    set_hardware(args.hardware)
 
     # TODO handle random seeds whenever it becomes a necessary thing in scripts
     # e.g. deterministic results instead of statistical reproduction.
