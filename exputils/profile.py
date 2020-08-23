@@ -111,7 +111,7 @@ def log_time(start_message, end_message=None, time_method=time):
     stop = time_method()
 
     if end_message is not None:
-        logging.info(start_message)
+        logging.info(end_message)
 
     logging.info("Elapsed time: %d", stop - start)
 
