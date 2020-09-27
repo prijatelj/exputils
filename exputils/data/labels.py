@@ -22,8 +22,8 @@ def load_label_set(filepath, delimiter=None, increment_enc=None):
 
     if delimiter is None:
         with open(filepath, 'r') as openf:
-            ndenc = NominalDataEncoder(openf.read().splitlines())
-        return ndenc
+            nd_enc = NominalDataEncoder(openf.read().splitlines())
+        return nd_enc
 
     # TODO load as csv or tsv
 
