@@ -549,7 +549,12 @@ def add_kfold_cv_args(parser):
     )
 
 
-def parse_args(arg_set=None, custom_args=None, description=None):
+def parse_args(
+    arg_set=None,
+    custom_args=None,
+    description=None,
+    log_level='WARNING',
+):
     """Creates the args to be parsed and the handling for each.
 
     Parameters
@@ -570,7 +575,7 @@ def parse_args(arg_set=None, custom_args=None, description=None):
     parser = argparse.ArgumentParser(description=description)
 
     # Setup and configure parser
-    add_logging_args(parser)
+    add_logging_args(parser, log_level=log_level)
     add_hardware_args(parser)
 
     if arg_set and 'kfold' in arg_set:
