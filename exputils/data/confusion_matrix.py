@@ -56,7 +56,11 @@ class ConfusionMatrix(object):
     #   e.g. given set of labels as known and set of labels as unknown return
     #   binary confusion matrix of knowns vs uknowns
 
+    # TODO combination of different confusion matrices objects into one.
+
     # TODO Visualizations
     # Confusion matrix visualized as a heat map
     # ROC
     # TOC
+
+    # TODO load and save from IO (CSV, TSV)
