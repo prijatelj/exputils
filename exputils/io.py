@@ -355,7 +355,7 @@ def set_logging(log_args):
         )
 
 
-def add_hardware_args(parser):
+def add_hardware_args(parser, ml_libs=None):
     """Adds the arguments detailing the hardware to be used."""
     # TODO consider packaging as a dict/NestedNamespace
     # TODO consider a boolean or something to indicate when to pass a
@@ -397,7 +397,7 @@ def add_hardware_args(parser):
 
     hardware.add_argument(
         '--ml_libs',
-        default=None,
+        default=ml_libs,
         nargs='+',
         help='The machine learning libraries to expect and to init hardware.',
         choices=[
@@ -554,6 +554,7 @@ def parse_args(
     custom_args=None,
     description=None,
     log_level='WARNING',
+    ml_libs=None,
 ):
     """Creates the args to be parsed and the handling for each.
 
@@ -576,7 +577,7 @@ def parse_args(
 
     # Setup and configure parser
     add_logging_args(parser, log_level=log_level)
-    add_hardware_args(parser)
+    add_hardware_args(parser, ml_libs=ml_libs)
 
     if arg_set and 'kfold' in arg_set:
         add_kfold_cv_args(parser)
