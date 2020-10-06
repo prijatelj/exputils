@@ -34,8 +34,16 @@ class ConfusionMatrix(object):
             # If given an existing matrix as a confusion matrix
             # TODO init with that given confusion matrix
         elif pred is not None:
+            # Calculate the confusion matrix from targets and preds with sklearn
             # TODO call scikit-learn.metrics.confusion_matrix to calc the
             # confusion matrix.
+            self.confusion_mat = confusion_matrix(
+                targets,
+                preds,
+                labels=labels,
+            )
+
+        self.labels = labels
 
     # TODO properties/methods for the metrics able to be derived from the
     # confusion matrix
@@ -63,4 +71,4 @@ class ConfusionMatrix(object):
     # ROC
     # TOC
 
-    # TODO load and save from IO (CSV, TSV)
+    # TODO load and save from IO (CSV, TSV, hdf5)
