@@ -105,7 +105,7 @@ def create_filepath(
         # NOTE beware possibility of program writing the same file in parallel
         parts = filepath.rpartition('.')
         if parts[0]:
-            if parts[1] and os.path.sep in parts[1]:
+            if parts[2] and os.path.sep in parts[2]:
                 # No extension and path separator in part after period
                 filepath = filepath + datetime.now().strftime(datetime_fmt)
             else:
