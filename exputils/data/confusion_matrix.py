@@ -3,22 +3,22 @@ calculated and certain metrics need calculated FROM the confusion matrix, add
 __tested__ metrics derived from the confusion matrix for efficient
 computation.
 """
+import logging
+import os
+
+import h5py
 import numpy as np
 import pandas as pd
+from plotly import graph_objects as go
 from sklearn.metrics import confusion_matrix
 
-# TODO obtain confusion matrix from sklearn
+from exputils.io import create_filepath
 
-# TODO obtain acc, f1, MCC, informedness, etc. from a confusion matrix
-
-# TODO obtain acc, f1, MCC, informedness, etc. from a confusion matrix
-
-# TODO create a confusion matrix class that manages all typical things to be
-# done with the confusion matrix and bundles the parts together nicely.
 
 class ConfusionMatrix(object):
     """Confusion matrix for nominal data that wraps the
-    sklearn.metrics.confusion_matrix.
+    sklearn.metrics.confusion_matrix. Rows are the known labels and columns are
+    the predictions.
     """
 
     def __init__(self, targets, preds=None, labels=None, *args, **kwargs):
@@ -31,43 +31,84 @@ class ConfusionMatrix(object):
         labels : list, optional
             The labels for the row and columns of the confusion matrix
         """
-        # TODO calc the
-        if pred is None:
-            if isinstance(targets, str):
-                self._load(targets, *args, **kwargs)
-            elif  and len(targets.shape) == 2:
-            # If given an existing matrix as a confusion matrix
-            # TODO init with that given confusion matrix
+        if preds is None:
+            if (
+                isinstance(targets, np.ndarray)
+                and len(targets.shape) == 2
+                and targets.shape[0] == targets.shape[1]
+            ):
+                # If given an existing matrix as a confusion matrix
+                self.labels = labels
+                self.mat = targets
             else:
                 raise TypeError(' '.join([
-                    'targets type is expected to be either `str` or',
-                    f'`np.ndarray`, but recieved type of {type(targets)}.',
+                    'targets type is expected to be of type `np.ndarray`, but',
+                    f'recieved type of {type(targets)}.',
                 ]))
-        elif pred is not None:
+        elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
-            # TODO call scikit-learn.metrics.confusion_matrix to calc the
-            # confusion matrix.
-            self.confusion_mat = confusion_matrix(
+            self.mat = confusion_matrix(
                 targets,
                 preds,
                 labels=labels,
+                *args,
+                **kwargs,
             )
 
-        self.labels = labels
+            self.labels = labels
 
-    # TODO properties/methods for the metrics able to be derived from the
-    # confusion matrix
-    # accuracy
-    # error rate
-    # precision
-    # recall
-    # f1
-    # informedness
+    # TODO methods for the metrics able to be derived from the confusion matrix
+    # f score (1 and beta)
+    # informedness # This may not generalize to multi class
     # mathew's correlation coefficient (MCC)
     # ROC
     # ROC AUC
     # TOC
     # TOC AUC
+
+    def accuracy(self, label_weights=None):
+        #return (self.true_pos + self.true_negatives) / all = Trues / all
+        if label_weights is not None:
+            raise NotImplementedError('Use sklearn.metrics on the samples')
+        return np.diagonal(self.mat).sum() / self.mat.sum()
+
+    def error_rate(self, label_weights=None):
+        if label_weights is not None:
+            raise NotImplementedError('Use sklearn.metrics on the samples')
+        return 1.0 - self.accuracy
+
+    def true_rate(self, average=False, label_weights=None):
+        """Recall, sensitivity, hit rate, or true positive rate. This is
+        calculated the same as specificity, selectivity or true negative rate,
+        but on the different classes.
+
+        Parameters
+        ----------
+        average : bool
+            if True, averages all true class rates together. Otherwise, returns
+            the true rate per class in order of labels.
+        """
+        recalls = np.diagonal(self.mat) / self.mat.sum(axis=1)
+
+        if average:
+            if label_weights is not None:
+                raise NotImplementedError('Use sklearn.metrics on the samples')
+            # Provide the averaged true class rates (balanced accuracy)
+            return recalls.mean()
+
+        # Provide the recall per class
+        return recalls
+
+    def f_score(self, beta=1, average='macro', label_weights=None):
+        # average match sklearn f1_score: None, "binary", micro, macro,
+        # weighted
+        raise NotImplementedError('Use sklearn.metrics on the samples')
+
+    def mcc(self, label_weights=None):
+        """Mathew's Correlation Coefficient, R_k, a generalizatin of Pearson's
+        correlation coefficient.
+        """
+        raise NotImplementedError('Use sklearn.metrics on the samples')
 
     # TODO Reduction of classes including two class subsets to obtain
     # Binarization
@@ -77,82 +118,178 @@ class ConfusionMatrix(object):
     # TODO combination of different confusion matrices objects into one.
 
     # TODO Visualizations
-    # Confusion matrix visualized as a heat map
     # ROC
     # TOC
 
-    # TODO load and save from IO (CSV, TSV, hdf5)
+    def heatmap(
+        self,
+        filepath=None,
+        overwrite=False,
+        **kwargs,
+    ):
+        """Confusion matrix visualized as a heat map using plotly."""
+        raise NotImplementedError()
 
-    def save(self, filepath, sep=',', filetype='csv'):
-        """Saves the current confusion matrix to the given filepath."""
+        if self.labels is None:
+            labels = np.arange(len(self.mat))
+        else:
+            labels = self.labels
 
-    def _load(
+        # Provide more informative (overridable) default layout for the heatmap
+        layout_kwargs = dict(
+            title = '<b>Confusion Matrix</b>',
+            xaxis = {'side': 'top'},
+            yaxis = {'autorange': 'reverse'},
+        )
+        # If layout override exists, then update defaults
+        if 'layout' in kwargs:
+            if isinstance(kwargs['layout'], dict):
+                layout_kwargs.update(kwargs['layout'])
+                kwargs['layout'] = go.Layout(**layout_kwargs)
+            else:
+                layout_kwargs.update(kwargs['layout'])
+                kwargs['layout'] = go.Layout(**layout_kwargs).update(
+                    **kwargs['layout'],
+                )
+        else:
+            kwargs['layout'] = go.Layout(**layout_kwargs)
+
+
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=self.mat,
+                x=labels,
+                y=labels,
+                **kwargs.pop('data', {}),
+            ),
+            **kwargs,
+        )
+
+        if filepath is None:
+            return fig
+
+        # Otherwise save plot to filepath
+        fig.write_image(create_filepath(filepath, overwrite=overwrite))
+
+    def save(
         self,
         filepath,
-        sep=',',
-        filetype=None,
-        headers=None,
+        filetype='csv',
+        conf_mat_key='confusion_matrix',
+        overwrite=False,
         *args,
         **kwargs,
     ):
-        """Loads the confusion matrix from the given filepath."""
-        if filetype is None:
-            # Infer filetype from filepath if filetype is not given
-            parts = filepath.rpartition('.')
-
-            if parts[0]:
-                if parts[2] and os.path.sep in parts[2]
-                    raise ValueError(' '.join([
-                        'filetype is `None` and no file extention present in',
-                        'given filepath.',
-                    ]))
-                else:
-                    parts[2] = parts[2].lower()
-                    if parts[2] == 'csv':
-                    elif parts[2].lower() == 'csv':
-                        sep = ','
-                        filetype = 'csv'
-                    elif parts[2] == 'tsv':
-                        sep = '\t'
-                        filetype = 'tsv'
-                    else parts[2] in 'hdf5' parts[2] in 'h5':
-                        filetype = 'hdf5'
-                    raise ValueError(' '.join([
-                        'filetype is `None` and file extention present in',
-                        'given filepath is not "csv", "tsv", "hdf5", or "h5".',
-                    ]))
-            else:
-                raise ValueError(' '.join([
-                    'filetype is `None` and no file extention present in',
-                    'given filepath.',
-                ]))
-        elif isinstance(filetype, str):
-            # lowercase filetype and check if an expected extension
-            filetype = filetype.lower()
-            if filetype not in {'csv', 'tsv', 'hdf5', 'h5'}:
-                raise TypeError(' '.join([
-                    'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                    f'"h5", not `{filetype}`',
-                ]))
-        else:
+        """Saves the current confusion matrix to the given filepath."""
+        if not isinstance(filetype, str):
             raise TypeError(' '.join([
                 'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                f'"h5", not of type `{type(filetype)}`',
+                f'"h5"; not type `{type(filetype)}`',
             ]))
 
-        if filepath == 'csv' or 'tsv':
-            loaded_confusion_matrix = np.loadtxt(
+        filetype = filetype.lower()
+        filepath = create_filepath(filepath, overwrite=overwrite)
+
+        if filetype == 'csv' or filetype == 'tsv':
+            pd.DataFrame(self.mat, columns=self.labels).to_csv(
                 filepath,
-                delimiter=sep,
+                index=False,
                 *args,
                 **kwargs,
             )
+        else: #HDF5
+            with h5py.File(filepath, 'r') as h5f:
+                h5f['labels'] = self.labels.astype(np.string_)
+                h5f[conf_mat_key] = self.mat
 
-            assert (
-                len(loaded_confusion_matrix.shape) == 2
-                and loaded_confusion_matrix.shape[0]
-                    == loaded_confusion_matrix.shape[1]
-            )
 
-        else:  # HDF5
-            pass
+def load_confusion_mat(
+    filepath,
+    sep=',',
+    filetype=None,
+    names=None,
+    conf_mat_key='confusion_matrix',
+    *args,
+    **kwargs,
+):
+    """Convenience function that loads the confusion matrix from the given
+    filepath in given common formats. Loading from CSV relies on
+    pandas.read_csv(*args, **kwargs).
+    """
+    if filetype is None:
+        # Infer filetype from filepath if filetype is not given
+        parts = filepath.rpartition('.')
+
+        if not parts[0]:
+            raise ValueError(' '.join([
+                'filetype is `None` and no file extention present in',
+                'given filepath.',
+            ]))
+
+        if parts[2] and os.path.sep in parts[2]:
+            raise ValueError(' '.join([
+                'filetype is `None` and no file extention present in',
+                'given filepath.',
+            ]))
+
+        parts[2] = parts[2].lower()
+        if parts[2] == 'csv':
+            sep = ','
+            filetype = 'csv'
+        elif parts[2] == 'tsv':
+            sep = '\t'
+            filetype = 'tsv'
+        elif parts[2] == 'hdf5' or parts[2] == 'h5':
+            filetype = 'hdf5'
+        raise ValueError(' '.join([
+            'filetype is `None` and file extention present in',
+            'given filepath is not "csv", "tsv", "hdf5", or "h5".',
+        ]))
+    elif isinstance(filetype, str):
+        # lowercase filetype and check if an expected extension
+        filetype = filetype.lower()
+        if filetype not in {'csv', 'tsv', 'hdf5', 'h5'}:
+            raise TypeError(' '.join([
+                'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
+                f'"h5", not `{filetype}`',
+            ]))
+    else:
+        raise TypeError(' '.join([
+            'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
+            f'"h5", not of type `{type(filetype)}`',
+        ]))
+
+    if filepath == 'csv' or 'tsv':
+        loaded_confusion_mat = pd.read_csv(
+            filepath,
+            sep=sep,
+            names=names,
+            *args,
+            **kwargs,
+        )
+
+        assert (
+            len(loaded_confusion_mat.shape) == 2
+            and loaded_confusion_mat.shape[0] == loaded_confusion_mat.shape[1]
+        )
+
+        if names is None:
+            labels = np.array(loaded_confusion_mat.columns)
+        else:
+            labels = None
+    else:  # HDF5
+        with h5py.File(filepath, 'r') as h5f:
+            if 'labels' in h5f.keys():
+                if names is not None:
+                    logging.warning(' '.join([
+                        '`names` is provided while "labels" exists in the',
+                        'hdf5 file! `names` is prioritized of the labels',
+                        'in hdf5 file.',
+                    ]))
+                    labels = names
+                else:
+                    labels = h5f['labels'][:]
+
+            loaded_confusion_mat = h5f[conf_mat_key][:]
+
+    return ConfusionMatrix(loaded_confusion_mat, labels=labels)
