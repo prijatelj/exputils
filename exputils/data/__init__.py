@@ -1,3 +1,6 @@
-from exputils.data import confusion_matrix
+from exputils.data.confusion_matrix import (
+    ConfusionMatrix,
+    load_confusion_mat,
+)
 
-__all__ = ['confusion_matrix']
+__all__ = ['ConfusionMatrix', 'load_confusion_mat']
