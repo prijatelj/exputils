@@ -13,7 +13,10 @@ setup(
     version='0.1.0',
     author='Derek S. Prijatelj',
     author_email='dprijate@nd.edu',
-    packages=['exputils'],
+    packages=[
+        'exputils',
+        'exputils.data',
+    ],
     #scripts
     long_description=long_description,
     long_description_content_type='text/markdown',
