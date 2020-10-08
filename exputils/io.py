@@ -323,6 +323,17 @@ def add_logging_args(parser, log_level='WARNING'):
         dest='logging.datefmt',
     )
 
+    log_args.add_argument(
+        '--log_overwrite',
+        action='store_true',
+        help=' '.join([
+            'If file already exists, giving this flag overwrites that log',
+            'file if filemode is "w", otherwise the datetime is appended to',
+            'the log filename to avoid overwriting the existing log file.',
+        ]),
+        dest='logging.overwrite',
+    )
+
 
 def set_logging(log_args):
     """Given an argparse.Namespace, initialize the python logging."""
@@ -333,8 +344,12 @@ def set_logging(log_args):
         raise ValueError(f'Invalid log level given: {log_args.level}')
 
     if log_args.filename is not None:
-        dir_part = log_args.filename.rpartition(os.path.sep)[0]
-        os.makedirs(dir_part, exist_ok=True)
+        overwrite = (
+            log_args.overwrite
+            or log_args.filemode not in {'w', 'w+'}
+        )
+
+        log_args.filename = create_filepath(log_args.filename, overwrite)
 
         logging.basicConfig(
             filename=log_args.filename,
