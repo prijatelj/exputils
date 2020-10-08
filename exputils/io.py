@@ -333,7 +333,7 @@ def set_logging(log_args):
         raise ValueError(f'Invalid log level given: {log_args.level}')
 
     if log_args.filename is not None:
-        dir_part = log_args.log_file.rpartition(os.path.sep)[0]
+        dir_part = log_args.filename.rpartition(os.path.sep)[0]
         os.makedirs(dir_part, exist_ok=True)
 
         logging.basicConfig(
