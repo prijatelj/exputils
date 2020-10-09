@@ -128,8 +128,6 @@ class ConfusionMatrix(object):
         **kwargs,
     ):
         """Confusion matrix visualized as a heat map using plotly."""
-        raise NotImplementedError()
-
         if self.labels is None:
             labels = np.arange(len(self.mat))
         else:
