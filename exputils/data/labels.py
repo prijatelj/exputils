@@ -1,5 +1,10 @@
 """Useful label management classes and functions."""
-from bidict import bidict
+from collections.abc import Iterable
+import logging
+
+from bidict import OrderedBidict
+from sklearn.utils import validation
+from sklearn.preprocessing._label import _encode,
 
 
 def load_label_set(filepath, delimiter=None, increment_enc=None):
@@ -56,12 +61,13 @@ class BidirDict(dict):
             del self.inverse[self[key]]
         super(BidirDict, self).__delitem__(key)
 
-
 # TODO perhaps make a NominalDataBidict and have the encoders be numeric
 # encodings only? The Bidict would allow for ease for changing labels to others
 # but perhaps only bidict and BidirDict are necessary for that, rather than its
 # own class. That depends on what else is desired by the NominalDataBidict
 
+# TODO NominalDataMap(): to allow for mapping any nominal data to other nominal
+# labels, while the NominalDataEncoder is for encoding nominal data to integers
 
 class NominalDataEncoder(object):
     """A single class for handling the encoding of nominal data to integer
@@ -73,20 +79,39 @@ class NominalDataEncoder(object):
 
     Attributes
     ----------
-    encoder : bidict
-        The bidirectional mapping of nominal value to integer. There can be no
-        multiple keyes that map to the same values.
-
+    encoder : OrderedBidict
+        The bidirectional mapping of nominal value to integer encoding. There
+        can be no multiple keyes that map to the same values.
 
     Notes
     -----
         This is to provide ease-of-use for handling nominal data encodings
-        where scikit learn's label encoders were not as ergonomic.
+        where sklearn's label encoders were not as ergonomic. Here, "ergonomic"
+        is about grouping the necessary parts together for handling labels so
+        it is all in one place. This class could be implemented to wrap the
+        sklearn's encoders, but Bidict was used instead along with sklearn
+        functions.
     """
-    def __init__(self, sequence, ):
-        # TODO init w/ default mapping, provided mapping, provided start index
+    # TODO perhaps inherit from sklear...LabelEncoder, given using its code.
+    def __init__(self, ordered_keys, shift=0, ignore_dups=False):
+        """
+        Parameters
+        ----------
+        shift : int, optional
+            Shifts the encoding by the given value. Can be seen as the starting
+            value of the ordered encodings.
+        ignore_dups : bool, optional
+            Ignores any duplicates in the given ordered keys. Not implemented!
+        """
+        if not ignore_dups and len(set(sequence)) != len(sequence):
+            raise ValueError('There are duplicates in the given sequence')
 
-    # TODO ease update of mapping,
+        if ignore_dups:
+            raise NotImplementedError('Ignore_dups is not yet implemented.')
+
+        self.encoder = OrderedBidict(
+            {key: enc + shift for enc, key in enumerate(ordered_keys, shift)}
+        )
 
     # TODO numpy vectorizaiton of encode/decode
     #   nominal value <=> int
@@ -94,49 +119,182 @@ class NominalDataEncoder(object):
     #   nominal value <=> one hot/binary
 
     def keys(self, *args, **kwargs):
-        return self.encoder.keys()
+        return self.encoder.keys(*args, **kwargs)
 
     def values(self, *args, **kwargs):
-        return self.encoder.values()
+        return self.encoder.values(*args, **kwargs)
 
     def items(self, *args, **kwargs):
-        return self.encoder.items()
+        return self.encoder.items(*args, **kwargs)
 
-    def encode(self, values):
+    def encode(self, keys, one_hot=False):
         """Encodes the given values into their respective encodings.
 
         Parameters
         ----------
-        values : scalar or np.ndarray
+        keys : scalar or np.ndarray
+        one_hot : bool
+            If True, then expects to encode the keys into their respective one
+            hot vectors. Otherwise, expects to map elements to their respective
+            encoding values.
+
+        Returns
+        -------
+        scalar or np.ndarray
+            Same shape as input keys, but with elements changed to the proper
+            encoding.
         """
+        # TODO real tempted to make it so this done through
+        # OrderedBidict.__getitem__(), only issue is setting values w/ = when
+        # OrderedBidict[np.ndarray] = some value, which is probably
+        # functionality we do not want. May be confusion too.
 
-        return
+        keys = validation.volumn_or_1d(keys, warn=True)
 
-    def decode(self, encodings):
-        """Decodes the given encodings into their respective values.
+        if validation.num_samples(keys) == 0:
+            return n.array([])
+
+        _, keys = _encode(keys, uniques=np.asarray(self.keys()), encode=True)
+
+        return keys
+
+    def decode(self, encodings, one_hot=False):
+        """Decodes the given encodings into their respective keys.
 
         Parameters
         ----------
         encodings : scalar or np.ndarray
+        one_hot : bool
+            If True, then expects to decode one hot vectors into their
+            respective keys. Otherwise, expects to map elements to their
+            respective keys.
+
+        Returns
+        -------
+        scalar or np.ndarray
+            Same shape as input encodings, but with elements changed to the
+            proper encoding.
         """
+        # TODO real tempted to make it so this done through
+        # OrderedBidict.inverse.__getitem__()
 
-        return
+        encodings = validation.column_or_1d(encodings, warn=True)
+        # inverse transform of empty array is empty array
+        if validation._num_samples(encodings) == 0:
+            return np.array([])
 
-    def adjust_encoding(self, adjustment):
-        """Increments or decrements all encodings by the given integer."""
+        diff = np.setdiff1d(encodings, np.arange(len(self.keys())))
+        if len(diff):
+            raise ValueError(
+                "encodings contains previously unseen labels: %s" % str(diff)
+            )
+        encodings = np.asarray(encodings)
+        return np.asarray(self.keys())[encodings]
+
+    def shift_encoding(self, shift):
+        """Increments or decrements all encodings by the given integer.
+
+        Parameters
+        ----------
+        shift : int
+            shifts all encodings by this constant integer.
+        """
+        raise NotImplementedError('Shifting of encodings is not allowed.')
+
         if not isinstance(adjustment, int):
             raise TypeError(' '.join([
-                'Expected `adjustment` to be type `int`, not,
-                f`{type(adjustment)}`',
-            )
-        # TODO implement adjustment of all encodings
-        raise NotImplementedError('No adjusting the encoding integer values.')
+                'Expected `adjustment` to be type `int`, not',
+                'f`{type(adjustment)}`',
+            ]))
+
+        # NOTE uncertain when shift comes into play outside of maintence or
+        # when a enc value that is off from that of array indices applies.
+
+        if shift == 0:
+            logging.debug('Shift value given was zero. No shifting done.')
+            return
+
+        for key in self.encoder:
+            self.encoder[key] += shift
+
+    def append(self, keys):
+        """Appends the keys to the end of the encoder giving them their
+        respective encodings.
+        """
+        last_enc = next(reversed(self.encoder.inverse))
+
+        if (
+            isinstance(keys, list)
+            or isinstance(keys, tuple)
+            or isinstance(keys, np.ndarray)
+        ):
+            # Add the multiple keys to the encoder in order.
+            for key in keys:
+                if key not in self.encoder:
+                    last_enc += 1
+                    self.encoder[key] = last_enc
+                else:
+                    # NOTE could add optional ignore_dups to avoid raising
+                    raise KeyError(
+                        f'Given key `{key}` is already in the NominalDecoder!',
+                    )
+        else:
+            # Add individual key
+            if keys not in self.encoder:
+                self.encoder[keys] = last_enc + 1
+            else:
+                # NOTE could add optional ignore_dups to avoid raising
+                raise KeyError(
+                    f'Given key `{key}` is already in the NominalDecoder!',
+                )
+
+    def reorder(self, keys):
+        """Reorder the keys"""
+        raise NotImplementedError()
+
+    def pop(self, key, encoding=False):
+        """Pops the single key and updates the encoding as necessary."""
+        # NOTE pop key, but then requires updating the rest of the following
+        # keys, while if this was done by a list, it would be handled by
+        # shifting the array and index mapping done automatically... but then
+        # again, iirc, the index mapping runs into a similar issue wrt to
+        # getting the index of the keys.
+
+        # Handle the shift in encoding if there is any.
+        shift = next(iter(self.encoder.inverse))
+
+        # Obtain the last encoding
+        last_enc = next(reversed(self.encoder.inverse))
+
+        # Remove the given key, whether it is a key or encoding
+        if encoding:
+            self.encoder.inverse.pop(key)
+            enc = key
+        else:
+            enc = self.encoder.pop(key)
+
+        if enc != last_enc:
+            # Decrement all following keys by one
+            for key in list(self.encoder)[enc - shift:]:
+                self.encoder[key] -= 1
+
+        # TODO efficiently handle the popping of a sequence of keys and the
+        # updating of the encoding.
+
+    # TODO consider an insert_after(), inplace of a append() then reorder()
 
 
-    def update(self, *args, **kwargs):
-        """Updates the encoder with the given values."""
-        # TODO updates the bidict encoder with the given values
-        self.encoder.update(*args, **kwargs)
+# TODO SparseNominalDataEncoder()
+#   Same thing but encoding integers can jump between values, meaning missing
+#   values are expected.... dunno when this is necessary
+# TODO consider the following, but it is only necessary if there are holes
+# in the encoder, which there should never be. Probs best to leave to user
+# or child class.
+#max_enc : int
+#    The maximum integer encoding in the current encoder
+#min_enc : int
+#    The minimum integer encoding in the current encoder
 
 
-# TODO class OrdinalDataEncoder: an ordinal version
+
+# TODO class OrdinalDataEncoder: an ordinal data version
