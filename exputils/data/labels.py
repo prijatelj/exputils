@@ -1,13 +1,15 @@
 """Useful label management classes and functions."""
-from collections.abc import Iterable
 import logging
 
 from bidict import OrderedBidict
+import numpy as np
 from sklearn.utils import validation
-from sklearn.preprocessing._label import _encode,
+from sklearn.preprocessing import label_binarize
+# TODO decide how to handle the following improper usage of sklearn
+from sklearn.preprocessing._label import _encode
 
 
-def load_label_set(filepath, delimiter=None, increment_enc=None):
+def load_label_set(filepath, delimiter=None, shift=0):
     """Loads the given file and reads the labels in. Expects label per line.
 
     Parameters
@@ -19,15 +21,12 @@ def load_label_set(filepath, delimiter=None, increment_enc=None):
         label. Always assumes one label per line. Will assume first column is
         the original label to be encoded to the provided encoding when
         delimiter is not None.
-    increment_enc : int, optional
+    shift : int, optional
         Optional incrementation to the encoding values
     """
-    if increment_inc is not None:
-        raise NotImplementedError('incrementing the encoding integer values.')
-
     if delimiter is None:
         with open(filepath, 'r') as openf:
-            nd_enc = NominalDataEncoder(openf.read().splitlines())
+            nd_enc = NominalDataEncoder(openf.read().splitlines(), shift)
         return nd_enc
 
     # TODO load as csv or tsv
@@ -68,6 +67,8 @@ class BidirDict(dict):
 
 # TODO NominalDataMap(): to allow for mapping any nominal data to other nominal
 # labels, while the NominalDataEncoder is for encoding nominal data to integers
+#   The point for this is to extend OrderedBidict so it already has the ability
+#   to to transform numpy arrays when given.
 
 class NominalDataEncoder(object):
     """A single class for handling the encoding of nominal data to integer
@@ -93,7 +94,25 @@ class NominalDataEncoder(object):
         functions.
     """
     # TODO perhaps inherit from sklear...LabelEncoder, given using its code.
-    def __init__(self, ordered_keys, shift=0, ignore_dups=False):
+    #   The idea was to extend OrderedBidict to do efficient numpy
+    #   transformations similar to how sklearn...LabelEncoder does, and to also
+    #   organize the locality of labels, their encodings, and functions for
+    #   transforming data to and from the label encodings.
+    #
+    #   Furthermore, this is to aide in working with labels in general, esp. in
+    #   the case of complex label relationships and updating and changing
+    #   labels at certain levels of class hierarchy. So TODO: add ease of
+    #   combining NominalDataEncoders together, and this is where shift then
+    #   would come into play.
+    def __init__(
+        self,
+        ordered_keys,
+        shift=0,
+        pos_label=1,
+        neg_label=0,
+        sparse_output=False,
+        ignore_dups=False,
+    ):
         """
         Parameters
         ----------
@@ -103,7 +122,7 @@ class NominalDataEncoder(object):
         ignore_dups : bool, optional
             Ignores any duplicates in the given ordered keys. Not implemented!
         """
-        if not ignore_dups and len(set(sequence)) != len(sequence):
+        if not ignore_dups and len(set(ordered_keys)) != len(ordered_keys):
             raise ValueError('There are duplicates in the given sequence')
 
         if ignore_dups:
@@ -112,6 +131,10 @@ class NominalDataEncoder(object):
         self.encoder = OrderedBidict(
             {key: enc + shift for enc, key in enumerate(ordered_keys, shift)}
         )
+
+        self.pos_label = pos_label
+        self.neg_label = neg_label
+        self.sparse_output = sparse_output
 
     # TODO numpy vectorizaiton of encode/decode
     #   nominal value <=> int
@@ -149,10 +172,20 @@ class NominalDataEncoder(object):
         # OrderedBidict[np.ndarray] = some value, which is probably
         # functionality we do not want. May be confusion too.
 
-        keys = validation.volumn_or_1d(keys, warn=True)
+        if one_hot:
 
-        if validation.num_samples(keys) == 0:
-            return n.array([])
+            return label_binarize(
+                keys,
+                classes=np.asarray(self.keys()),
+                pos_label=self.pos_label,
+                neg_label=self.neg_label,
+                sparse_output=self.sparse_output,
+            )
+
+        keys = validation.column_or_1d(keys, warn=True)
+
+        if validation._num_samples(keys) == 0:
+            return np.array([])
 
         _, keys = _encode(keys, uniques=np.asarray(self.keys()), encode=True)
 
@@ -199,9 +232,7 @@ class NominalDataEncoder(object):
         shift : int
             shifts all encodings by this constant integer.
         """
-        raise NotImplementedError('Shifting of encodings is not allowed.')
-
-        if not isinstance(adjustment, int):
+        if not isinstance(shift, int):
             raise TypeError(' '.join([
                 'Expected `adjustment` to be type `int`, not',
                 'f`{type(adjustment)}`',
@@ -252,6 +283,12 @@ class NominalDataEncoder(object):
         """Reorder the keys"""
         raise NotImplementedError()
 
+        # TODO reorder by new sequence of keys (equivalent to making a new
+        # NDEnc but preserving the shift, if there is any, which now may be a
+        # depracted thing anyways, so reorder would be superfulous in this case
+
+        # partial reorder, as in swapping class locations, may still be useful.
+
     def pop(self, key, encoding=False):
         """Pops the single key and updates the encoding as necessary."""
         # NOTE pop key, but then requires updating the rest of the following
@@ -275,8 +312,8 @@ class NominalDataEncoder(object):
 
         if enc != last_enc:
             # Decrement all following keys by one
-            for key in list(self.encoder)[enc - shift:]:
-                self.encoder[key] -= 1
+            for k in list(self.encoder)[enc - shift:]:
+                self.encoder[k] -= 1
 
         # TODO efficiently handle the popping of a sequence of keys and the
         # updating of the encoding.
