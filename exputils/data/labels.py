@@ -235,12 +235,15 @@ class NominalDataEncoder(object):
         # Check for unrecognized keys # TODO replace _encode_check_unknown()
         diff = _encode_check_unknown(keys, np.array(self.encoder))
         if diff:
+            #   unknowns=None
             raise ValueError(f'`keys` contains previously unseen keys: {diff}')
             # TODO allow for assigning a default encoding value if unknown
             # label: i.e. not in the current encoder
+            #   unknowns=default; unknown_idx = 0
 
             # TODO XOR allow for updating of the labels in order of occurrence.
             # XOR default is as is, fail if unseen label in encoding.
+            #   unknowns=update
 
         if keys.dtype == object:
             # Python encode
@@ -295,6 +298,8 @@ class NominalDataEncoder(object):
             raise ValueError(
                 "encodings contains previously unseen labels: %s" % str(diff)
             )
+            # TODO hard to handle unknowns in the decoding case, but could do
+            # update or default as well, i suppose.
 
         return np.array(self.encoder)[np.array(encodings)]
 
