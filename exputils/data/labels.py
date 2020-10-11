@@ -10,7 +10,7 @@ from sklearn.preprocessing._label import _encode_check_unknown
 from sortedcollections import SortedDict, ValueSortedDict
 
 
-def load_label_set(filepath, delimiter=None, shift=0):
+def load_label_set(filepath, delimiter=None, *args, **kwargs):
     """Loads the given file and reads the labels in. Expects label per line.
 
     Parameters
@@ -27,7 +27,11 @@ def load_label_set(filepath, delimiter=None, shift=0):
     """
     if delimiter is None:
         with open(filepath, 'r') as openf:
-            nd_enc = NominalDataEncoder(openf.read().splitlines(), shift)
+            nd_enc = NominalDataEncoder(
+                openf.read().splitlines(),
+                *args,
+                **kwargs,
+            )
         return nd_enc
 
     # TODO load as csv or tsv
