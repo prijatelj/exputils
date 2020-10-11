@@ -35,6 +35,9 @@ def load_label_set(filepath, delimiter=None, *args, **kwargs):
         return nd_enc
 
     # TODO load as csv or tsv
+    raise NotImplementedError(
+        f'delimiter is not None, but loading CSV not implemented. {delimiter}',
+    )
 
 
 class BidirDict(dict):
@@ -82,6 +85,10 @@ class KeySortedBidict(MutableBidict):
      _fwdm_cls = SortedDict
      _invm_cls = ValueSortedDict
      _repr_delegate = list
+
+     # TODO the KeySortedBiDict's SortedDict and ValueSortedDict are not
+     # Reversible; unable to obtain reverse iterator via reversed(). This needs
+     # fixed. For now use OrderedBidict
 
 
 class NominalDataEncoder(object):
@@ -287,6 +294,7 @@ class NominalDataEncoder(object):
         """
         if isinstance(one_hot_axis, int):
             encodings = encodings.argmax(axis=one_hot_axis)
+            # TODO check encodings.shape to expected shape
 
         encodings = validation.column_or_1d(encodings, warn=True)
         # inverse transform of empty array is empty array
@@ -299,7 +307,7 @@ class NominalDataEncoder(object):
                 "encodings contains previously unseen labels: %s" % str(diff)
             )
             # TODO hard to handle unknowns in the decoding case, but could do
-            # update or default as well, i suppose.
+            # update or default as well, I suppose.
 
         return np.array(self.encoder)[np.array(encodings)]
 
@@ -331,7 +339,7 @@ class NominalDataEncoder(object):
         """Appends the keys to the end of the encoder giving them their
         respective encodings.
         """
-        # TODO handle the update to argsorted_keys
+        # TODO handle the update to argsorted_keys, more efficiently
         last_enc = next(reversed(self.encoder.inverse))
 
         if (
@@ -354,7 +362,6 @@ class NominalDataEncoder(object):
                 elif ignore_dups:
                     continue
                 else:
-                    # NOTE could add optional ignore_dups to avoid raising
                     raise KeyError(
                         f'Given key `{key}` is already in the NominalDecoder!',
                     )
@@ -371,7 +378,6 @@ class NominalDataEncoder(object):
             elif ignore_dups:
                 return
             else:
-                # NOTE could add optional ignore_dups to avoid raising
                 raise KeyError(
                     f'Given key `{keys}` is already in the NominalDecoder!',
                 )
