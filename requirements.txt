@@ -2,3 +2,4 @@ bidict
 packaging
 numpy
 scikit-learn>=0.23
+sortedcollections
