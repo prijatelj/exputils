@@ -75,7 +75,7 @@ class ConfusionMatrix(object):
     def error_rate(self, label_weights=None):
         if label_weights is not None:
             raise NotImplementedError('Use sklearn.metrics on the samples')
-        return 1.0 - self.accuracy
+        return 1.0 - self.accuracy()
 
     def true_rate(self, average=False, label_weights=None):
         """Recall, sensitivity, hit rate, or true positive rate. This is
@@ -137,7 +137,7 @@ class ConfusionMatrix(object):
         layout_kwargs = dict(
             title = '<b>Confusion Matrix</b>',
             xaxis = {'side': 'top'},
-            yaxis = {'autorange': 'reverse'},
+            yaxis = {'autorange': 'reversed'},
         )
         # If layout override exists, then update defaults
         if 'layout' in kwargs:
