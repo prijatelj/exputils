@@ -545,8 +545,10 @@ def add_kfold_cv_args(parser):
     kfold_cv.add_argument(
         '--train_focus_fold',
         action='store_true',
-        help='The focus fold in K fold cross validaiton will be used for '
-        + 'training and the rest will be used for testing..',
+        help=' '.join([
+            'The focus fold in K fold cross validaiton will be used for ',
+            'training and the rest will be used for testing.',
+        ]),
         dest='kfold_cv.train_focus_fold',
     )
 
@@ -555,11 +557,11 @@ def add_kfold_cv_args(parser):
         '--focus_fold',
         default=None,
         type=int,
-        help=(
-            'The focus fold to split the data on to form train and test sets '
-            + 'for a singlemodel train and evaluate session (No K-fold Cross '
-            + 'Validation; Just evaluates one partition).',
-        ),
+        help=' '.join([
+            'The focus fold to split the data on to form train and test sets',
+            'for a singlemodel train and evaluate session (No K-fold Cross ',
+            'Validation; Just evaluates one partition).',
+        ]),
         dest='kfold_cv.focus_fold',
     )
 
