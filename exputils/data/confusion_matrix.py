@@ -33,13 +33,16 @@ class ConfusionMatrix(object):
         """
         if preds is None:
             if (
-                isinstance(targets, np.ndarray)
+                (
+                    isinstance(targets, np.ndarray)
+                    or isinstance(targets, pd.DataFrame)
+                )
                 and len(targets.shape) == 2
                 and targets.shape[0] == targets.shape[1]
             ):
                 # If given an existing matrix as a confusion matrix
                 self.labels = labels
-                self.mat = targets
+                self.mat = np.array(targets)
             else:
                 raise TypeError(' '.join([
                     'targets type is expected to be of type `np.ndarray`, but',
@@ -230,19 +233,20 @@ def load_confusion_mat(
                 'given filepath.',
             ]))
 
-        parts[2] = parts[2].lower()
-        if parts[2] == 'csv':
+        filetype = parts[2].lower()
+        if filetype == 'csv':
             sep = ','
-            filetype = 'csv'
-        elif parts[2] == 'tsv':
+            #filetype = 'csv'
+        elif filetype == 'tsv':
             sep = '\t'
-            filetype = 'tsv'
-        elif parts[2] == 'hdf5' or parts[2] == 'h5':
+            #filetype = 'tsv'
+        elif filetype == 'hdf5' or filetype == 'h5':
             filetype = 'hdf5'
-        raise ValueError(' '.join([
-            'filetype is `None` and file extention present in',
-            'given filepath is not "csv", "tsv", "hdf5", or "h5".',
-        ]))
+        else:
+            raise ValueError(' '.join([
+                'filetype is `None` and file extention present in',
+                'given filepath is not "csv", "tsv", "hdf5", or "h5".',
+            ]))
     elif isinstance(filetype, str):
         # lowercase filetype and check if an expected extension
         filetype = filetype.lower()
