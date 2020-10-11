@@ -173,10 +173,9 @@ class NominalDataEncoder(object):
         # functionality we do not want. May be confusion too.
 
         if one_hot:
-
             return label_binarize(
                 keys,
-                classes=np.asarray(self.keys()),
+                classes=np.asarray(self.encoder),
                 pos_label=self.pos_label,
                 neg_label=self.neg_label,
                 sparse_output=self.sparse_output,
@@ -187,11 +186,22 @@ class NominalDataEncoder(object):
         if validation._num_samples(keys) == 0:
             return np.array([])
 
-        _, keys = _encode(keys, uniques=np.asarray(self.keys()), encode=True)
+        _, keys = _encode(keys, uniques=np.asarray(self.encoder), encode=True)
+
+        # TODO allow for assigning a default encoding value if unknown label:
+        # i.e. not in the current encoder
+
+        # TODO XOR allow for updating of the labels in order of occurrence.
+        #   XOR default is as is, fail if unseen label in encoding.
+
+        # TODO to get this to work w/ np.searchsorted as sklearn does it, a
+        # sorted args of the keys must always be present. This means as the
+        # keys change, this sorted args must also change. Otherwise, this needs
+        # done a different way. This is the cost of having any order of keys.
 
         return keys
 
-    def decode(self, encodings, one_hot=False):
+    def decode(self, encodings, one_hot_axis=None):
         """Decodes the given encodings into their respective keys.
 
         Parameters
@@ -210,6 +220,8 @@ class NominalDataEncoder(object):
         """
         # TODO real tempted to make it so this done through
         # OrderedBidict.inverse.__getitem__()
+        if isinstance(one_hot_axis, int):
+            encodings.argmax(axis=one_hot_axis)
 
         encodings = validation.column_or_1d(encodings, warn=True)
         # inverse transform of empty array is empty array
@@ -222,7 +234,7 @@ class NominalDataEncoder(object):
                 "encodings contains previously unseen labels: %s" % str(diff)
             )
         encodings = np.asarray(encodings)
-        return np.asarray(self.keys())[encodings]
+        return np.asarray(self.encoder)[encodings]
 
     def shift_encoding(self, shift):
         """Increments or decrements all encodings by the given integer.
@@ -248,7 +260,7 @@ class NominalDataEncoder(object):
         for key in self.encoder:
             self.encoder[key] += shift
 
-    def append(self, keys):
+    def append(self, keys, ignore_dups=False):
         """Appends the keys to the end of the encoder giving them their
         respective encodings.
         """
@@ -264,6 +276,8 @@ class NominalDataEncoder(object):
                 if key not in self.encoder:
                     last_enc += 1
                     self.encoder[key] = last_enc
+                elif ignore_dups:
+                    continue
                 else:
                     # NOTE could add optional ignore_dups to avoid raising
                     raise KeyError(
@@ -273,10 +287,12 @@ class NominalDataEncoder(object):
             # Add individual key
             if keys not in self.encoder:
                 self.encoder[keys] = last_enc + 1
+            elif ignore_dups:
+                return
             else:
                 # NOTE could add optional ignore_dups to avoid raising
                 raise KeyError(
-                    f'Given key `{key}` is already in the NominalDecoder!',
+                    f'Given key `{keys}` is already in the NominalDecoder!',
                 )
 
     def reorder(self, keys):
