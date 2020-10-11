@@ -93,7 +93,7 @@ class KeySortedBidict(MutableBidict):
 
 class NominalDataEncoder(object):
     """A single class for handling the encoding of nominal data to integer
-    values or one hot vectors.
+    values or one hot / binarized vectors.
 
     nominal_value -> int -> one_hot_vector or binary vector
 
@@ -141,6 +141,9 @@ class NominalDataEncoder(object):
         sparse_output=False,
         ignore_dups=False,
         sort_keys=False,
+        #unknown=None,
+        #unknown_idx=None,
+        #unknown_key='unknown_default',
     ):
         """
         Parameters
@@ -195,9 +198,42 @@ class NominalDataEncoder(object):
         self.neg_label = neg_label
         self.sparse_output = sparse_output
 
+        # TODO need to flesh out the handling of unknowns in the enecoder
+        """
+        if unknown == 'update':
+            self.unknown_idx = unknown_idx
+            # TODO further functionality required in [en/de]code to handle this
+            # TODO is there a default unknown or no?
+            self.unknown_key = unknown_key
+        elif unknown == 'single':
+            self.unknown_idx = unknown_idx
+            self.unknown_key = unknown_key
+            # TODO further functionality required in [en/de]code to handle this
+            # TODO optionally separate unknowns from the encoding, esp. in
+            # one_hots
+        elif unknown is not None:
+            raise ValueError(' '.join([
+                'Expected `unknown` to be `None`, "update", or "single", but',
+                f'"recieved": {unknown}',
+            ]))
+        else:
+            self.unknown_idx = None
+        self.unknown = unknown
+        #"""
+
     @property
     def keys_sorted(self):
         return isinstance(self.encoder, KeySortedBidict)
+
+    #@property
+    #def unknown_key(self):
+    #    if self.unknown is None:
+    #        raise ValueError('`unknown` is None. No unknown key or encoding!')
+    #    elif self.unknown_idx is None:
+    #        raise ValueError(
+    #            '`unknown_idx` is None. No default unknown key or encoding!'
+    #        )
+        return self.encoder.inverse[self.unknown_idx]
 
     def keys(self, *args, **kwargs):
         return self.encoder.keys(*args, **kwargs)
