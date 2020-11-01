@@ -1,5 +1,8 @@
 bidict
+h5py
 packaging
+pandas
+plotly
 numpy
 scikit-learn>=0.23
 sortedcollections
