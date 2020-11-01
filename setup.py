@@ -20,7 +20,7 @@ setup(
     #scripts
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='',
+    url='https://github.com/prijatelj/exputils',
     install_requires=install_requires,
     python_requires='>=3.7',
 )
