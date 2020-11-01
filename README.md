@@ -1,6 +1,6 @@
 ## Experiment Utils
 
-Convenient scripts and functions that are commonly used in code for running experiments.
+Convenient scripts and functions that are commonly used in code for running experiments, specifically machine learning experiments.
 
 The main components are:
 
