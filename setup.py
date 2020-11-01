@@ -18,9 +18,15 @@ setup(
         'exputils.data',
     ],
     #scripts
+    description='Convenient functions that are commonly used for running machine learning experiments.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/prijatelj/exputils',
     install_requires=install_requires,
     python_requires='>=3.7',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+    ],
 )
