@@ -10,22 +10,20 @@ from sklearn.preprocessing._label import _encode_check_unknown
 from sortedcollections import SortedDict, ValueSortedDict
 
 
-def load_label_set(filepath, delimiter=None, *args, **kwargs):
+def load_label_set(filepath, sep=None, *args, **kwargs):
     """Loads the given file and reads the labels in. Expects label per line.
 
     Parameters
     ----------
     filepath : str
         The filepath to the file containing the labels
-    delmiter : str, optional
-        The delimiter character if the file contains provided encodings per
+    sep : str, optional
+        The sep character if the file contains provided encodings per
         label. Always assumes one label per line. Will assume first column is
         the original label to be encoded to the provided encoding when
-        delimiter is not None.
-    shift : int, optional
-        Optional incrementation to the encoding values
+        sep is not None.
     """
-    if delimiter is None:
+    if sep is None:
         with open(filepath, 'r') as openf:
             nd_enc = NominalDataEncoder(
                 openf.read().splitlines(),
@@ -34,9 +32,9 @@ def load_label_set(filepath, delimiter=None, *args, **kwargs):
             )
         return nd_enc
 
-    # TODO load as csv or tsv
+    # TODO load as csv or tsv, or YAML
     raise NotImplementedError(
-        f'delimiter is not None, but loading CSV not implemented. {delimiter}',
+        f'sep is not None, but loading CSV not implemented. {sep}',
     )
 
 
@@ -473,6 +471,26 @@ class NominalDataEncoder(object):
         # updating of the encoding.
 
     # TODO consider an insert_after(), inplace of a append() then reorder()
+
+    def save(self, filepath, sep=None):
+        """Saves the labels as an ordered list where the index is implied by
+        the order of the labels.
+        """
+        if sep is None:
+            with open(filepath, 'w') as openf:
+                openf.write('\n'.join([str(x) for x in self.encoder))
+        else:
+            raise NotImplementedError(' '.join([
+                'Saving as any file using separators other than newlines',
+                'between the labels is not yet supported.',
+            ]))
+
+    @staticmethod
+    def load(filepath, sep=None, *args, **kwargs):
+        """Loads the ordered list from the file. Defaults to expect a text file
+        where each line contains a single nominal label.
+        """
+        return load_label_set(filepath, sep, *args, **kwargs)
 
 
 # TODO SparseNominalDataEncoder()
