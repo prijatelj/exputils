@@ -21,7 +21,6 @@ import numpy as np
 # allow for the subparsers to have overlapping arg names because they are
 # inherently nested.
 
-#NOTE Beware issue where argparse --help crashes, uncertain of cause atm.
 class NestedNamespace(argparse.Namespace):
     """An extension of the Namespace allowing for nesting of namespaces.
 
