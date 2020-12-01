@@ -3,10 +3,101 @@ determined by their docstring.
 """
 import argparse
 
-# TODO create the dectorator @config that wraps any function or class, takes
-# the docstring, optionally checks if docstring roughly matches class to avoid
+# TODO create the function when given any function or class, takes the
+# docstring, optionally checks if docstring roughly matches class/args to avoid
 # issues mismatching docstring to object, and optionally creates the argparse
 # parser for that object using the information from the docstring.
 
+def get_func_argparser(func, style='numpy', exclude=None, parser=None, abbrev=None):
+    """Get the argparse parser that corresponds to the docstring.
+
+    Parameters
+    ----------
+    obj : Object
+        An object with a `__doc__` attribute that contians a docstring to be
+        parsed.
+    style : str | func
+        The identifier of which docstring parser to use. Supported styles are
+        'numpy, 'google', and 'pep8'. TODO add use of custom docstring parser
+        by passing a callable object that when given a str parses that string
+        and returns some standard format to be decided.
+    exclude : list(str), optional
+        A list of str identifiers that correspond to the arguments to be
+        excluded from the argparse parser.
+    parser : argparse.ArgumentParser, optional
+        The parser in which the resulting parser becomes an argument group to.
+    abbrev : list(str) | dict(str:str) | bool, optional
+        If a list or strings, then expects to abbreviate the arguments that are
+        included in the parser by order of their position in the docstring. If
+        a dictionary, then expects the keys to be the string names of the
+        arguments that map to the string values of the abbreviations to be used
+        for them. If True, then the abbreviations of each argument are created
+        based on the first character of each argument name. When None, the
+        default, no argument abbreviation occurs.
+
+    Returns
+    -------
+    argparse.ArgumentParser | argparse._ArgumentGroup
+        The parser resulting from the parsed docstring of the given object. If
+        `parser` was given, then the ArgumentGroup object is returned.
+    """
+    if hasattr(func, '__doc__'):
+        raise AttributeError(' '.join([
+            f'The object `func` of type {type(func)} does not have a',
+            '`__doc__` attribute. Cannot create parser for this object.',
+        ]))
+
+    return parser
+
+
+def get_class_argparser(class_obj, methods, *args, **kwargs):
+    """Creates the argparse parser that contains the ArgumentGroups for each
+    method whose doc strings are parsed.
+
+    Parameters
+    ----------
+    class_obj : type
+    methods : list(str)
+
+    Returns
+    -------
+    argparse.ArgumentParser | argparse._ArgumentGroup
+        The parser resulting from the parsed docstring of the given object. If
+        `parser` was given, then the ArgumentGroup object is returned.
+    """
+    if hasattr(class_obj, '__doc__'):
+        raise AttributeError(' '.join([
+            f'The object `class_obj` of type {type(class_obj)} does not have',
+            'a `__doc__` attribute. Cannot create parser for this object.',
+        ]))
+
+    return parser
+
+
+def get_arg_parser(obj, *args, **kwargs):
+    """Convenience function that determines if the given object is a class or
+    function and creates the appropriate argparse parser.
+    """
+    if callable(obj):
+        # Treat as function
+        get_func_argparser()
+    elif isinstance(obj, type):
+        # Treat as class
+        get_class_argparser()
+    else:
+        raise TypeError(' '.join([
+            'Expected a class or function, but recieved an object of type',
+            f'`{type(obj)}`',
+        ]))
+
+    return
+
+
 # TODO check primitives, confirm all primitives and basic numpy dtypes are as
-# stated in docstring
+# stated in docstring; do this as a decorator, separate from the parser
+# creation. This is mostly for fun and experience, but if properly generalized,
+# then it wwould be useful and simplify code when such checks need to be done
+# prior to running anything.
+
+# TODO Possibly could add an extra one that checks a given set of conditions if
+# generic primitive and numpy dtype checking is not enough.

@@ -246,7 +246,7 @@ def check_argv(value, arg, optional_arg=True):
 
     Parameters
     ----------
-    value : list() | type |object, optional
+    value : list() | type | object, optional
         Value is expected to be a list of values to check as the value of the
         given arg. If given vlaue is not iterable, then it is treated as a
         single value to be checked. If a type is given, then its type is
