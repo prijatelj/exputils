@@ -7,12 +7,73 @@ import argparse
 # docstring, optionally checks if docstring roughly matches class/args to avoid
 # issues mismatching docstring to object, and optionally creates the argparse
 # parser for that object using the information from the docstring.
+def parse_description(obj, style='numpy'):
+    """Parse the description from `obj.__doc__` expecting the given doc string
+    style. The description is the short summary and assumes to be those whose
+    signature is available, thus not written as the first line of the
+    `__doc__`.
+    """
+    if style != 'numpy':
+        raise NotImplementedError(' '.join([
+            f'Only style able to parsed is "numpy". The `{style}` style is',
+            'not yet supported.',
+        ]))
 
-def get_func_argparser(func, style='numpy', exclude=None, parser=None, abbrev=None):
+    if obj.__doc__ is None:
+        return ''
+
+    doc_lines = obj.__doc__.splitlines()
+
+    if len(doc_lines) > 1:
+        return doc_lines[0].strip()
+
+    end_desc = 0
+    length = len(doc_lines) - 1
+    for i, line for enumerate(doc_lines):
+        end_desc = i
+        stripped_line = line.strip()
+
+        if stripped_line == '' or '.. deprecated::' in stripped_line:
+            # Obtain the short summary, i.e. that is the first paragraph.
+            # Stop in case of a deprecation warning w/o empty line prior
+            break
+        elif set(stripped_line) == {'-'}:
+            # Stop in case of no empty line prior to a section
+            end_desc -= 1
+            break
+        elif i == length:
+            # There is content in last line that is part of short summary.
+            end_desc = length + 1
+
+        # Modify doc lines so it strips whitespace before joining
+        doc_lines[i] = stripped_line
+
+    return ' '.join(doc_lines[end_desc])
+
+
+def parse_params(obj, style='numpy'):
+    """Parse the parameters from `obj.__doc__` epecting the given doc string
+    style
+    """
+
+    return
+
+
+def get_func_argparser(
+    parser,
+    func,
+    style='numpy',
+    exclude=None,
+    abbrev=None,
+    *args,
+    **kwargs,
+):
     """Get the argparse parser that corresponds to the docstring.
 
     Parameters
     ----------
+    parser : argparse.ArgumentParser, optional
+        The parser in which the resulting parser becomes an argument group to.
     obj : Object
         An object with a `__doc__` attribute that contians a docstring to be
         parsed.
@@ -24,8 +85,6 @@ def get_func_argparser(func, style='numpy', exclude=None, parser=None, abbrev=No
     exclude : list(str), optional
         A list of str identifiers that correspond to the arguments to be
         excluded from the argparse parser.
-    parser : argparse.ArgumentParser, optional
-        The parser in which the resulting parser becomes an argument group to.
     abbrev : list(str) | dict(str:str) | bool, optional
         If a list or strings, then expects to abbreviate the arguments that are
         included in the parser by order of their position in the docstring. If
@@ -46,6 +105,26 @@ def get_func_argparser(func, style='numpy', exclude=None, parser=None, abbrev=No
             f'The object `func` of type {type(func)} does not have a',
             '`__doc__` attribute. Cannot create parser for this object.',
         ]))
+
+    parser_group = parser.add_argument_group(
+        func.__name__,
+        parse_description(func.__doc__),
+    )
+
+    parsed_params = parse_params(func, style)
+
+    for param, param_vars in parsed_params.items():
+        name = f'--{param}' if 'default' in param_vars else param
+
+        if abbrev:
+            add_argument = parser_group.add_argument
+        else:
+            add_argument = parser_group.add_argument
+
+        add_argument(
+            name,
+            **param_vars,
+        )
 
     return parser
 
@@ -70,6 +149,8 @@ def get_class_argparser(class_obj, methods, *args, **kwargs):
             f'The object `class_obj` of type {type(class_obj)} does not have',
             'a `__doc__` attribute. Cannot create parser for this object.',
         ]))
+
+    docstring = func.__doc__
 
     return parser
 
