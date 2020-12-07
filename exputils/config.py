@@ -265,6 +265,19 @@ class DocStringConfig(object):
                 **param_vars,
             )
 
+        # TODO allow for extracting arg data from other object's existing
+        # docstrings. This is useful when the same arg is passed around
+        # multiple times or expected to be the same in different places. This
+        # would be accomplished by simply have some identifier that a docstring
+        # hyperlink is occuring, e.g. `package.module.submodule.func`, maybe
+        # with optional `...func(arg_name)` if different than current one's
+        # name. This would sacrifice locality of that information to the code
+        # for the sake of "write once" design. The docstring when rendered in
+        # autodocs could then include the link to the docs being linked and
+        # even expand the docs inplace to avoid making the user traverse links
+        # more than necessary (solving locality issue in rendered docs, but not
+        # code).
+
         return parser
 
 
