@@ -1,5 +1,38 @@
 """Create argparse compatible configuration objects of objects in Python as
 determined by their docstring.
+
+Notes
+-----
+This probably is better served as its own package once more complete. It is
+meta-programming to expedite the coding process of configuration files and
+argparsers based on the docstring. It could also include decorators for
+"auto-completion" or "meta-completion" of code by parsing the docstring and
+setting the function's, class' or callable's positional args, and keyword args.
+Due to the desire of wanting to expedite the coding process, it follows the
+design principle of "write once", meaning to write something once and use many
+times. If support of main docstring types are included by the parser, then it
+may even be possible to obtain a config and arg parser for 3rd party code.
+
+This relies on the docstring being written correctly within it's docstring
+style, which then mean the use of this code, encourages properly written doc
+strings, similar to how python inherently requires properly indented code. This
+also being optional, is of course a plus where a lack of complete docstrings is
+desired.
+
+The meta-completion portion could possibly include a "compile" feature that
+creates the resulting python code to avoid computation costs of using the
+decorator to parse the function's docstring everytime. And type checking could
+be optional, ofc, and possibly even include custom functions for type checking
+certain types.
+
+This would benefit from also including a docstring conversion and underlying
+default state information for docstrings to ease translation between
+docstrings. I suppose, this could be used in a way like yapf is to organize
+docstrings within a desired stylistic parameters that do not affect
+functionality of the parsing.
+
+Parts coming into play: config file creation/parsing, argparser creation, type
+checking, meta-completion, style check/correction.
 """
 import argparse
 import re
@@ -333,4 +366,5 @@ def get_argparser(obj, *args, **kwargs):
 # prior to running anything.
 
 # TODO Possibly could add an extra one that checks a given set of conditions if
-# generic primitive and numpy dtype checking is not enough.
+# generic primitive and numpy dtype checking is not enough. Custom type
+# checking by providing a function or multiple functions.
