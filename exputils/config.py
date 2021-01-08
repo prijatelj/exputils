@@ -33,6 +33,13 @@ functionality of the parsing.
 
 Parts coming into play: config file creation/parsing, argparser creation, type
 checking, meta-completion, style check/correction.
+
+Profiling from CLI: it would be beneficial if the CLI had the ability to turn
+on profiling for the different configs for certain objects, this way those
+objects in particular would be profiles when their individual parts ran. This
+would require a decorator to be able to give the CLI control over the function,
+or around whenevr the function or class is executed.
+    Separate loggers possible to this way, if so desired.
 """
 import argparse
 import re
