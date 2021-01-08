@@ -20,7 +20,6 @@ class ConfusionMatrix(object):
     sklearn.metrics.confusion_matrix. Rows are the known labels and columns are
     the predictions.
     """
-
     def __init__(self, targets, preds=None, labels=None, *args, **kwargs):
         """
         Parameters
@@ -111,7 +110,56 @@ class ConfusionMatrix(object):
         """Mathew's Correlation Coefficient, R_k, a generalizatin of Pearson's
         correlation coefficient.
         """
-        raise NotImplementedError('Use sklearn.metrics on the samples')
+        actual = self.mat.sum(1)
+        predicted = self.mat.sum(0)
+        correctly_pred = np.diagonal(self.mat).sum()
+        total_sqrd = self.mat.sum()**2
+
+        return (
+            correctly_pred * self.mat.sum() - actual * predicted /
+            (
+                np.sqrt(total_sqrd - predicted**2)
+                * np.sqrt(total_sqrd - actual**2)
+            )
+        )
+
+    def mutual_information(self, normalized=None):
+        """The confusion matrix is the joint probability mass function when
+        the values are divided by the total of the confusion matrix.
+        """
+        if normalized is not None:
+            raise NotImplementedError()
+        # TODO weighted variants, more normalized variants, adjusted, etc.
+        # TODO replicate the normalization method in scikitlearn but from a
+        # given confusion matrix.
+
+        joint_distrib = self.mat / self.mat.sum()
+        marginal_actual = joint_distrib.sum(1).reshape(-1,1)
+        marginal_pred = joint_distrib.mat.sum(0).reshape(-1,1)
+
+        # TODO need a unit test for this
+        joint_flat = joint_distrib.flatten()
+        denom_flat = np.repeat(marginal_actual, self.mat.shape[1], 1) \
+            * np.repeat(marginal_pred, self.mat.shape[1], 1).T
+
+        mutual_info = (joint_flat * np.log2(joint_flat / denom_flat)).sum()
+
+        if normalized == 'redundancy':
+            return mutual_info / (self.entropy(0) + self.entropy(1))
+        if normalized == 'symmetric_uncertainty':
+            return mutual_info / (2 * (self.entropy(0) + self.entropy(1)))
+        return mutual_info
+
+    def entropy(self, axis):
+        """Returns the entropy of either the predictions or actual values."""
+        # TODO need a unit test for this
+        if axis == 0 or axis == 'pred' or axis == 'predicted':
+            marginal = self.mat.sum(0)
+        elif axis == 1 or axis == 'actual':
+            marginal = self.mat.sum(1)
+        else:
+            raise ValueError(f'Unexpected value for `axis`: {axis}')
+        return -(marginal * np.log2(marginal)).sum()
 
     # TODO Reduction of classes including two class subsets to obtain
     # Binarization
