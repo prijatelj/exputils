@@ -179,7 +179,7 @@ class ConfusionMatrix(object):
                 * log(joint_distrib / denom)
             ).sum()
         else:
-            mutual_info = (joint_distrib * np.log2(joint_distrib / denom)).sum()
+            mutual_info = (joint_distrib * log(joint_distrib / denom)).sum()
 
         if normalized is None:
             return mutual_info
