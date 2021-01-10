@@ -111,13 +111,16 @@ class ConfusionMatrix(object):
         """Mathew's Correlation Coefficient generalized to multiple classes,
         R_k, a generalizatin of Pearson's correlation coefficient.
         """
+        if label_weights is not None:
+            raise NotImplementedError()
+
         actual = self.mat.sum(1)
         predicted = self.mat.sum(0)
         correct_pred = np.diagonal(self.mat).sum()
         total_sqrd = self.mat.sum()**2
 
         return (
-            correct_pred * self.mat.sum() - np.dot(actual, predicted) /
+            (correct_pred * self.mat.sum() - np.dot(actual, predicted)) /
             (
                 np.sqrt(total_sqrd - np.dot(predicted, predicted))
                 * np.sqrt(total_sqrd - np.dot(actual, actual))
