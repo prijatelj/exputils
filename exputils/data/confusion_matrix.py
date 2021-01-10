@@ -113,11 +113,11 @@ class ConfusionMatrix(object):
         """
         actual = self.mat.sum(1)
         predicted = self.mat.sum(0)
-        correctly_pred = np.diagonal(self.mat).sum()
+        correct_pred = np.diagonal(self.mat).sum()
         total_sqrd = self.mat.sum()**2
 
         return (
-            correctly_pred * self.mat.sum() - np.dot(actual, predicted) /
+            correct_pred * self.mat.sum() - np.dot(actual, predicted) /
             (
                 np.sqrt(total_sqrd - np.dot(predicted, predicted))
                 * np.sqrt(total_sqrd - np.dot(actual, actual))
@@ -141,8 +141,10 @@ class ConfusionMatrix(object):
 
         # TODO need a unit test for this
         joint_flat = joint_distrib.flatten()
-        denom_flat = np.repeat(marginal_actual, self.mat.shape[1], 1) \
+        denom_flat = (
+            np.repeat(marginal_actual, self.mat.shape[1], 1)
             * np.repeat(marginal_pred, self.mat.shape[1], 1).T
+        ).flatten()
 
         if (
             isinstance(weights, np.ndarray)
@@ -282,95 +284,96 @@ class ConfusionMatrix(object):
                 h5f['labels'] = self.labels.astype(np.string_)
                 h5f[conf_mat_key] = self.mat
 
+    @staticmethod
+    def load(
+        self,
+        filepath,
+        sep=',',
+        filetype=None,
+        names=None,
+        conf_mat_key='confusion_matrix',
+        *args,
+        **kwargs,
+    ):
+        """Convenience function that loads the confusion matrix from the given
+        filepath in given common formats. Loading from CSV relies on
+        pandas.read_csv(*args, **kwargs).
+        """
+        if filetype is None:
+            # Infer filetype from filepath if filetype is not given
+            parts = filepath.rpartition('.')
 
-def load_confusion_mat(
-    filepath,
-    sep=',',
-    filetype=None,
-    names=None,
-    conf_mat_key='confusion_matrix',
-    *args,
-    **kwargs,
-):
-    """Convenience function that loads the confusion matrix from the given
-    filepath in given common formats. Loading from CSV relies on
-    pandas.read_csv(*args, **kwargs).
-    """
-    if filetype is None:
-        # Infer filetype from filepath if filetype is not given
-        parts = filepath.rpartition('.')
+            if not parts[0]:
+                raise ValueError(' '.join([
+                    'filetype is `None` and no file extention present in',
+                    'given filepath.',
+                ]))
 
-        if not parts[0]:
-            raise ValueError(' '.join([
-                'filetype is `None` and no file extention present in',
-                'given filepath.',
-            ]))
+            if parts[2] and os.path.sep in parts[2]:
+                raise ValueError(' '.join([
+                    'filetype is `None` and no file extention present in',
+                    'given filepath.',
+                ]))
 
-        if parts[2] and os.path.sep in parts[2]:
-            raise ValueError(' '.join([
-                'filetype is `None` and no file extention present in',
-                'given filepath.',
-            ]))
-
-        filetype = parts[2].lower()
-        if filetype == 'csv':
-            sep = ','
-            #filetype = 'csv'
-        elif filetype == 'tsv':
-            sep = '\t'
-            #filetype = 'tsv'
-        elif filetype == 'hdf5' or filetype == 'h5':
-            filetype = 'hdf5'
+            filetype = parts[2].lower()
+            if filetype == 'csv':
+                sep = ','
+                #filetype = 'csv'
+            elif filetype == 'tsv':
+                sep = '\t'
+                #filetype = 'tsv'
+            elif filetype == 'hdf5' or filetype == 'h5':
+                filetype = 'hdf5'
+            else:
+                raise ValueError(' '.join([
+                    'filetype is `None` and file extention present in',
+                    'given filepath is not "csv", "tsv", "hdf5", or "h5".',
+                ]))
+        elif isinstance(filetype, str):
+            # lowercase filetype and check if an expected extension
+            filetype = filetype.lower()
+            if filetype not in {'csv', 'tsv', 'hdf5', 'h5'}:
+                raise TypeError(' '.join([
+                    'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
+                    f'"h5", not `{filetype}`',
+                ]))
         else:
-            raise ValueError(' '.join([
-                'filetype is `None` and file extention present in',
-                'given filepath is not "csv", "tsv", "hdf5", or "h5".',
-            ]))
-    elif isinstance(filetype, str):
-        # lowercase filetype and check if an expected extension
-        filetype = filetype.lower()
-        if filetype not in {'csv', 'tsv', 'hdf5', 'h5'}:
             raise TypeError(' '.join([
                 'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                f'"h5", not `{filetype}`',
+                f'"h5", not of type `{type(filetype)}`',
             ]))
-    else:
-        raise TypeError(' '.join([
-            'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-            f'"h5", not of type `{type(filetype)}`',
-        ]))
 
-    if filepath == 'csv' or 'tsv':
-        loaded_confusion_mat = pd.read_csv(
-            filepath,
-            sep=sep,
-            names=names,
-            *args,
-            **kwargs,
-        )
+        if filepath == 'csv' or 'tsv':
+            loaded_conf_mat = pd.read_csv(
+                filepath,
+                sep=sep,
+                names=names,
+                *args,
+                **kwargs,
+            )
 
-        assert (
-            len(loaded_confusion_mat.shape) == 2
-            and loaded_confusion_mat.shape[0] == loaded_confusion_mat.shape[1]
-        )
+            assert (
+                len(loaded_conf_mat.shape) == 2
+                and loaded_conf_mat.shape[0] == loaded_conf_mat.shape[1]
+            )
 
-        if names is None:
-            labels = np.array(loaded_confusion_mat.columns)
-        else:
-            labels = None
-    else:  # HDF5
-        with h5py.File(filepath, 'r') as h5f:
-            if 'labels' in h5f.keys():
-                if names is not None:
-                    logging.warning(' '.join([
-                        '`names` is provided while "labels" exists in the',
-                        'hdf5 file! `names` is prioritized of the labels',
-                        'in hdf5 file.',
-                    ]))
-                    labels = names
-                else:
-                    labels = h5f['labels'][:]
+            if names is None:
+                labels = np.array(loaded_conf_mat.columns)
+            else:
+                labels = None
+        else:  # HDF5
+            with h5py.File(filepath, 'r') as h5f:
+                if 'labels' in h5f.keys():
+                    if names is not None:
+                        logging.warning(' '.join([
+                            '`names` is provided while "labels" exists in the',
+                            'hdf5 file! `names` is prioritized of the labels',
+                            'in hdf5 file.',
+                        ]))
+                        labels = names
+                    else:
+                        labels = h5f['labels'][:]
 
-            loaded_confusion_mat = h5f[conf_mat_key][:]
+                loaded_conf_mat = h5f[conf_mat_key][:]
 
-    return ConfusionMatrix(loaded_confusion_mat, labels=labels)
+        return ConfusionMatrix(loaded_conf_mat, labels=labels)
