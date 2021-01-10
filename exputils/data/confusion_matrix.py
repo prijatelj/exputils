@@ -117,10 +117,10 @@ class ConfusionMatrix(object):
         total_sqrd = self.mat.sum()**2
 
         return (
-            correctly_pred * self.mat.sum() - actual * predicted /
+            correctly_pred * self.mat.sum() - np.dot(actual, predicted) /
             (
-                np.sqrt(total_sqrd - predicted**2)
-                * np.sqrt(total_sqrd - actual**2)
+                np.sqrt(total_sqrd - np.dot(predicted, predicted))
+                * np.sqrt(total_sqrd - np.dot(actual, actual))
             )
         )
 
@@ -137,7 +137,7 @@ class ConfusionMatrix(object):
 
         joint_distrib = self.mat / self.mat.sum()
         marginal_actual = joint_distrib.sum(1).reshape(-1,1)
-        marginal_pred = joint_distrib.mat.sum(0).reshape(-1,1)
+        marginal_pred = joint_distrib.sum(0).reshape(-1,1)
 
         # TODO need a unit test for this
         joint_flat = joint_distrib.flatten()
@@ -145,7 +145,7 @@ class ConfusionMatrix(object):
             * np.repeat(marginal_pred, self.mat.shape[1], 1).T
 
         if (
-            isintance(weights, np.ndarray)
+            isinstance(weights, np.ndarray)
             and weights.shape == joint_distrib.shape
         ):
             # Weighted MI from Guiasu 1977
