@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
-from scipy.stats import gmean
+from scipy.stats import gmean, entropy
 from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
@@ -127,9 +127,26 @@ class ConfusionMatrix(object):
             )
         )
 
-    def mutual_information(self, normalized=None, weights=None):
+    def mutual_information(self, normalized=None, weights=None, base=None):
         """The confusion matrix is the joint probability mass function when
         the values are divided by the total of the confusion matrix.
+
+        Parameters
+        ----------
+        normalized : str, optional
+            The method of normalizing the mutual information. Options include:
+            'arithmetic' mean, 'geometric' mean, 'min'imum entropy, 'max'imum
+            entropy, 'add' the entropies to obtain the redundancy, 'harmonic'
+            mean of the two uncertainty coefficients, 'information quality
+            ratio' aka a normalized mutual information as a special case of
+            dual total correlation.
+        weights : np.ndarray, optional
+            A 2 by 2 array to weight each element of the discrete joint
+            distribution.
+        base : {None, 2}
+            Whether to use the natural base or base 2. Defaults to 'e' for the
+            natural logarithm to match with default expectation of
+            scikit-learn.metrics.mutual_info_score.
         """
         # TODO weighted variants, more normalized variants, adjusted, etc.
         # TODO replicate the normalization method in scikitlearn but from a
@@ -138,16 +155,19 @@ class ConfusionMatrix(object):
         #   thus, it follow geometric mean is similarly used, as is min() and
         #   max()
 
+        if base is None:
+            log = np.log
+        elif base == 2:
+            log = np.log2
+        else:
+            raise ValueError(f'Unexpected value for `base`: {base}')
+
         joint_distrib = self.mat / self.mat.sum()
         marginal_actual = joint_distrib.sum(1).reshape(-1,1)
-        marginal_pred = joint_distrib.sum(0).reshape(-1,1)
+        marginal_pred = joint_distrib.sum(0).reshape(1,-1)
 
         # TODO need a unit test for this
-        joint_flat = joint_distrib.flatten()
-        denom_flat = (
-            np.repeat(marginal_actual, self.mat.shape[1], 1)
-            * np.repeat(marginal_pred, self.mat.shape[1], 1).T
-        ).flatten()
+        denom = np.dot(marginal_actual, marginal_pred)
 
         if (
             isinstance(weights, np.ndarray)
@@ -155,47 +175,62 @@ class ConfusionMatrix(object):
         ):
             # Weighted MI from Guiasu 1977
             mutual_info = (
-                weights.flatten() * joint_flat
-                * np.log2(joint_flat / denom_flat)
+                weights.flatten() * joint_distrib
+                * log(joint_distrib / denom)
             ).sum()
         else:
-            mutual_info = (joint_flat * np.log2(joint_flat / denom_flat)).sum()
+            mutual_info = (joint_distrib * np.log2(joint_distrib / denom)).sum()
 
         if normalized is None:
             return mutual_info
         if normalized == 'arithmetic':
-            return mutual_info / np.mean((self.entropy(0), self.entropy(1)))
+            return mutual_info / np.mean(
+                (self.entropy(0, base=base), self.entropy(1, base=base))
+            )
         if normalized == 'geometric':
-            return mutual_info / gmean((self.entropy(0), self.entropy(1)))
+            return mutual_info / gmean(
+                (self.entropy(0, base=base), self.entropy(1, base=base))
+            )
         if normalized == 'min':
-            return mutual_info / np.minimum(self.entropy(0), self.entropy(1))
+            return mutual_info / np.minimum(
+                self.entropy(0, base=base),
+                self.entropy(1, base=base),
+            )
         if normalized == 'max':
-            return mutual_info / np.maximum(self.entropy(0), self.entropy(1))
-        if normalized == 'additive':
+            return mutual_info / np.maximum(
+                self.entropy(0, base=base),
+                self.entropy(1, base=base),
+            )
+        if normalized == 'add':
             # Redundancy
-            return mutual_info / (self.entropy(0) + self.entropy(1))
+            return mutual_info / (
+                self.entropy(0, base=base) + self.entropy(1, base=base)
+            )
         if normalized == 'harmonic':
             # Symmetric uncertainty: harmonic mean of the 2 uncertainty coef.s
-            return mutual_info / (2 * (self.entropy(0) + self.entropy(1)))
-        if normalized == 'iqr':
+            return mutual_info / (2 * (
+                self.entropy(0, base=base) + self.entropy(1, base=base)
+            ))
+        if normalized == 'information quality ratio':
             # Information Quality Ratio (IQR) or special case of dual total
             # correlation
             return mutual_info / (
-                self.entropy(0) + self.entropy(1) - mutual_info
+                self.entropy(0, base=base)
+                + self.entropy(1, base=base)
+                - mutual_info
             )
 
         raise ValueError('Unexpected value for `normalized`: {normalized}')
 
-    def entropy(self, axis):
+    def entropy(self, axis, base=None):
         """Returns the entropy of either the predictions or actual values."""
-        # TODO need a unit test for this
         if axis == 0 or axis == 'pred' or axis == 'predicted':
-            marginal = self.mat.sum(0)
+            marginal = self.mat.sum(0) / self.mat.sum()
         elif axis == 1 or axis == 'actual':
-            marginal = self.mat.sum(1)
+            marginal = self.mat.sum(1) / self.mat.sum()
         else:
             raise ValueError(f'Unexpected value for `axis`: {axis}')
-        return -(marginal * np.log2(marginal)).sum()
+        return entropy(marginal, base=base)
 
     # TODO Reduction of classes including two class subsets to obtain
     # Binarization
