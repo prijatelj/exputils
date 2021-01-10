@@ -155,6 +155,11 @@ class ConfusionMatrix(object):
         #   thus, it follow geometric mean is similarly used, as is min() and
         #   max()
 
+        # TODO I did the check and they are close but slight difference occurs
+        # at the 16th decimal place and on, which make sense cuz of float
+        # errors, but I am uncertain if they have a workaround to ensure it is
+        # more exact in the scikit-learn code.
+
         if base is None:
             log = np.log
         elif base == 2:
