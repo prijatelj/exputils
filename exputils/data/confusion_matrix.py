@@ -108,8 +108,8 @@ class ConfusionMatrix(object):
         raise NotImplementedError('Use sklearn.metrics on the samples')
 
     def mcc(self, label_weights=None):
-        """Mathew's Correlation Coefficient, R_k, a generalizatin of Pearson's
-        correlation coefficient.
+        """Mathew's Correlation Coefficient generalized to multiple classes,
+        R_k, a generalizatin of Pearson's correlation coefficient.
         """
         actual = self.mat.sum(1)
         predicted = self.mat.sum(0)
