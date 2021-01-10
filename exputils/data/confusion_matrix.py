@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
+from scipy.stats import gmean
 from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
@@ -123,15 +124,16 @@ class ConfusionMatrix(object):
             )
         )
 
-    def mutual_information(self, normalized=None):
+    def mutual_information(self, normalized=None, weights=None):
         """The confusion matrix is the joint probability mass function when
         the values are divided by the total of the confusion matrix.
         """
-        if normalized is not None:
-            raise NotImplementedError()
         # TODO weighted variants, more normalized variants, adjusted, etc.
         # TODO replicate the normalization method in scikitlearn but from a
         # given confusion matrix.
+        #   NMI using "arithemtic" in scikit learn is: MI / mean(H(X),H(Y))
+        #   thus, it follow geometric mean is similarly used, as is min() and
+        #   max()
 
         joint_distrib = self.mat / self.mat.sum()
         marginal_actual = joint_distrib.sum(1).reshape(-1,1)
@@ -142,13 +144,42 @@ class ConfusionMatrix(object):
         denom_flat = np.repeat(marginal_actual, self.mat.shape[1], 1) \
             * np.repeat(marginal_pred, self.mat.shape[1], 1).T
 
-        mutual_info = (joint_flat * np.log2(joint_flat / denom_flat)).sum()
+        if (
+            isintance(weights, np.ndarray)
+            and weights.shape == joint_distrib.shape
+        ):
+            # Weighted MI from Guiasu 1977
+            mutual_info = (
+                weights.flatten() * joint_flat
+                * np.log2(joint_flat / denom_flat)
+            ).sum()
+        else:
+            mutual_info = (joint_flat * np.log2(joint_flat / denom_flat)).sum()
 
-        if normalized == 'redundancy':
+        if normalized is None:
+            return mutual_info
+        if normalized == 'arithmetic':
+            return mutual_info / np.mean((self.entropy(0), self.entropy(1)))
+        if normalized == 'geometric':
+            return mutual_info / gmean((self.entropy(0), self.entropy(1)))
+        if normalized == 'min':
+            return mutual_info / np.minimum(self.entropy(0), self.entropy(1))
+        if normalized == 'max':
+            return mutual_info / np.maximum(self.entropy(0), self.entropy(1))
+        if normalized == 'additive':
+            # Redundancy
             return mutual_info / (self.entropy(0) + self.entropy(1))
-        if normalized == 'symmetric_uncertainty':
+        if normalized == 'harmonic':
+            # Symmetric uncertainty: harmonic mean of the 2 uncertainty coef.s
             return mutual_info / (2 * (self.entropy(0) + self.entropy(1)))
-        return mutual_info
+        if normalized == 'iqr':
+            # Information Quality Ratio (IQR) or special case of dual total
+            # correlation
+            return mutual_info / (
+                self.entropy(0) + self.entropy(1) - mutual_info
+            )
+
+        raise ValueError('Unexpected value for `normalized`: {normalized}')
 
     def entropy(self, axis):
         """Returns the entropy of either the predictions or actual values."""
