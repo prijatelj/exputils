@@ -17,3 +17,4 @@ The main components are:
         + This requires the command line interface to provide the argparse namespace identifier when the user supplies arguments. (i.e. long arg format)
         e.g. path from top level namespace to the node of the nested namespace whose args are being modified.
 + Perhaps here is not best, but being able to turn any table (csv, tsv) into a LaTeX table would be wonderful for expediency of putting it into a paper.
++ Consider a confusion tensor when addressing multiple random variables, e.g. a tensor with n+1 dimensions: actual/ground truth, predictor 1, predictor 2, ... predictor n.
