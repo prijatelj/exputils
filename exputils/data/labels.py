@@ -478,7 +478,7 @@ class NominalDataEncoder(object):
         """
         if sep is None:
             with open(filepath, 'w') as openf:
-                openf.write('\n'.join([str(x) for x in self.encoder))
+                openf.write('\n'.join([str(x) for x in self.encoder]))
         else:
             raise NotImplementedError(' '.join([
                 'Saving as any file using separators other than newlines',
