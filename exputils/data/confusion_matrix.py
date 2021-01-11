@@ -15,6 +15,11 @@ from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
 
+# TODO generalize confusion matrix to multiple discrete RVs with a
+# ConfusionTensor class, which would be the parent to ConfusionMatrix
+
+# TODO consider ways to interlink this with LabelEncoder better. If necessary
+
 
 class ConfusionMatrix(object):
     """Confusion matrix for nominal data that wraps the
@@ -60,10 +65,13 @@ class ConfusionMatrix(object):
 
             self.labels = labels
 
+    # TODO Combine confusion matrices of same shape and labels
+
+    # TODO Reduce confusion matrix to smaller size by mapping labels to one.
+
     # TODO methods for the metrics able to be derived from the confusion matrix
     # f score (1 and beta)
     # informedness # This may not generalize to multi class
-    # mathew's correlation coefficient (MCC)
     # ROC
     # ROC AUC
     # TOC
