@@ -33,7 +33,7 @@ class ConfusionMatrix(object):
         targets : np.ndarray()
             The confusion matrix to wrap, or the target labels.
         preds : np.ndarray, optional
-        labels : list, optional
+        labels : np.ndarray, optional
             The labels for the row and columns of the confusion matrix
         """
         if preds is None:
@@ -46,7 +46,7 @@ class ConfusionMatrix(object):
                 and targets.shape[0] == targets.shape[1]
             ):
                 # If given an existing matrix as a confusion matrix
-                self.labels = labels
+                self.labels = np.array(labels)
                 self.mat = np.array(targets)
             else:
                 raise TypeError(' '.join([
@@ -63,11 +63,57 @@ class ConfusionMatrix(object):
                 **kwargs,
             )
 
-            self.labels = labels
+            self.labels = np.array(labels)
 
-    # TODO Combine confusion matrices of same shape and labels
+    def __add__(self, other):
+        """Add two ConfusionMatrices together if of the same shape w/ same
+        label set."""
+        if not isinstance(other, ConfusionMatrix):
+            raise TypeError(
+                'Operator add only supported between two ConfusionMatrices.'
+            )
 
-    # TODO Reduce confusion matrix to smaller size by mapping labels to one.
+        if len(self.labels) != len(other.labels):
+            raise ValueError(' '.join([
+                'The two ConfusionMatrices do not have the same number of',
+                'labels!',
+            ]))
+        if not self.labels == other.labels:
+            if not set(self.labels) == set(other.labels):
+                raise ValueError(
+                    'The other ConfusionMatrix does not have the same labels!'
+                )
+
+            # TODO reorganize other to be added correctly to existing conf mat
+            raise NotImplementedError('Same labels of different order.')
+
+        return self.mat + other.mat
+
+    def reduce(self, labels, reduced_label, inverse=False):
+        """Reduce confusion matrix to smaller size by mapping labels to one."""
+        # TODO the use of the nominal label encoder would be good here.
+
+        mask = np.zeros(len(self.labels)).astype(bool)
+        for label in labels:
+            mask |= self.labels == label
+
+        if not inverse:
+            # Numpy mask in where= ignores False from the calculation.
+            mask = np.logical_not(mask)
+
+        # TODO optionally do in place, and Test to make sure this default
+        # returns a copy.
+
+        row_sum = self.mat.sum(0, where=mask, keepdims=True)
+        reduced_cm = np.vstack((self.mat[mask].copy(), row_sum,))
+
+        col_sum = reduced_cm.sum(1, where=mask, keepdims=True)
+        reduced_cm = np.hstack((reduced_cm[:, mask], col_sum))
+
+        return ConfusionMatrix(
+            reduced_cm,
+            labels=np.append(self.labels[mask], reduced_label),
+        )
 
     # TODO methods for the metrics able to be derived from the confusion matrix
     # f score (1 and beta)
