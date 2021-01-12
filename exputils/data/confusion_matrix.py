@@ -122,6 +122,9 @@ class ConfusionMatrix(object):
         ConfusionMatrix
             The resulting reduced confusion matrix.
         """
+        if reduced_label in self.labels and reduced_label not in labels:
+            labels = np.append(labels, reduced_label)
+
         # TODO the use of the nominal label encoder would be good here.
         mask = np.zeros(len(self.labels)).astype(bool)
         for label in labels:
