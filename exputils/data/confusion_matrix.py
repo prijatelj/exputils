@@ -46,8 +46,16 @@ class ConfusionMatrix(object):
                 and targets.shape[0] == targets.shape[1]
             ):
                 # If given an existing matrix as a confusion matrix
-                self.labels = np.array(labels)
                 self.mat = np.array(targets)
+
+                if isinstance(labels, list):
+                    self.labels = np.array(labels)
+                elif isinstance(labels, np.ndarray):
+                    self.labels = labels
+                elif isinstance(targets, pd.DataFrame):
+                    self.labels = np.array(targets.columns)
+                else:
+                    self.labels = np.arange(len(self.mat))
             else:
                 raise TypeError(' '.join([
                     'targets type is expected to be of type `np.ndarray`, but',
@@ -63,7 +71,12 @@ class ConfusionMatrix(object):
                 **kwargs,
             )
 
-            self.labels = np.array(labels)
+            if isinstance(labels, list):
+                self.labels = np.array(labels)
+            elif isinstance(labels, np.ndarray):
+                self.labels = labels
+            else:
+                self.labels = np.array(list(set(targets) | set(preds)))
 
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
@@ -90,29 +103,52 @@ class ConfusionMatrix(object):
         return self.mat + other.mat
 
     def reduce(self, labels, reduced_label, inverse=False):
-        """Reduce confusion matrix to smaller size by mapping labels to one."""
-        # TODO the use of the nominal label encoder would be good here.
+        """Reduce confusion matrix to smaller size by mapping labels to one.
 
+        Parameters
+        ----------
+        labels : list | np.ndarray
+            Labels to be reduced to a single label. If `inverse` is True, then
+            all the labels in the confusion matrix NOT included in this list
+            are to be reduced.
+        reduced_label : object
+            The label to replace the others.
+        inverse : bool, optional
+            If True, all of the labels in the confusion matrix NOT in `labels`
+            are reduced instead.
+
+        Returns
+        -------
+        ConfusionMatrix
+            The resulting reduced confusion matrix.
+        """
+        # TODO the use of the nominal label encoder would be good here.
         mask = np.zeros(len(self.labels)).astype(bool)
         for label in labels:
             mask |= self.labels == label
 
-        if not inverse:
+        if inverse:
             # Numpy mask in where= ignores False from the calculation.
             mask = np.logical_not(mask)
 
         # TODO optionally do in place, and Test to make sure this default
         # returns a copy.
 
-        row_sum = self.mat.sum(0, where=mask, keepdims=True)
-        reduced_cm = np.vstack((self.mat[mask].copy(), row_sum,))
+        row_sum = self.mat[mask].sum(
+            0,
+            where=np.logical_not(mask),
+            keepdims=True,
+        )
+        reduced_cm = np.vstack((self.mat[np.logical_not(mask)], row_sum))
 
-        col_sum = reduced_cm.sum(1, where=mask, keepdims=True)
-        reduced_cm = np.hstack((reduced_cm[:, mask], col_sum))
+        col_sum = reduced_cm[:, mask].sum(1, keepdims=True)
+        reduced_cm = np.hstack((reduced_cm[:, np.logical_not(mask)], col_sum))
+
+        reduced_cm[-1, -1] = self.mat[mask, mask].sum()
 
         return ConfusionMatrix(
             reduced_cm,
-            labels=np.append(self.labels[mask], reduced_label),
+            labels=np.append(self.labels[np.logical_not(mask)], reduced_label),
         )
 
     # TODO methods for the metrics able to be derived from the confusion matrix
