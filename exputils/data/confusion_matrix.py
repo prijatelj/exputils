@@ -136,18 +136,19 @@ class ConfusionMatrix(object):
 
         # TODO optionally do in place, and Test to make sure this default
         # returns a copy.
+        mat = self.mat.copy()
 
-        row_sum = self.mat[mask].sum(
+        row_sum = mat[mask].sum(
             0,
             where=np.logical_not(mask),
             keepdims=True,
         )
-        reduced_cm = np.vstack((self.mat[np.logical_not(mask)], row_sum))
+        reduced_cm = np.vstack((mat[np.logical_not(mask)], row_sum))
 
         col_sum = reduced_cm[:, mask].sum(1, keepdims=True)
         reduced_cm = np.hstack((reduced_cm[:, np.logical_not(mask)], col_sum))
 
-        reduced_cm[-1, -1] = self.mat[mask, mask].sum()
+        reduced_cm[-1, -1] = mat[mask, mask].sum()
 
         return ConfusionMatrix(
             reduced_cm,
