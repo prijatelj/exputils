@@ -213,6 +213,9 @@ class ConfusionMatrix(object):
         correct_pred = np.diagonal(self.mat).sum()
         total_sqrd = self.mat.sum()**2
 
+        # TODO be aware that NaNs occur at times, and the below may need a
+        # nonzero mask like mutual information did!
+
         return (
             (correct_pred * self.mat.sum() - np.dot(actual, predicted)) /
             (
