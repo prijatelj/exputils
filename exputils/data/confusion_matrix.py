@@ -253,6 +253,12 @@ class ConfusionMatrix(object):
         # at the 16th decimal place and on, which make sense cuz of float
         # errors, but I am uncertain if they have a workaround to ensure it is
         # more exact in the scikit-learn code.
+        # Using test example actual = [3, 2, 0, 0, 4] and pred = [4, 2, 3, 0,
+        # 1], The below MI and NMI for min, max, & arithmetic all matched ==,
+        # but geometric did not match exactly. it was off by ~1e-16.
+        # This may be due to not removing zero prob items from  marginals in
+        # entropy calc?
+        # Oh hey, the above is one unit test I can add. LOL
 
         if base is None:
             log = np.log
