@@ -265,8 +265,12 @@ class ConfusionMatrix(object):
         marginal_actual = joint_distrib.sum(1).reshape(-1,1)
         marginal_pred = joint_distrib.sum(0).reshape(1,-1)
 
-        # TODO need a unit test for this
+        # TODO need a unit test for this; have confirmed matches
+        # sklearn.metrics.mutual_info_score, tho, when using natural base 'e'
         denom = np.dot(marginal_actual, marginal_pred)
+
+        # Mask nonzero joint to avoid unnecessary zero division
+        nonzero = joint_distrib != 0
 
         if (
             isinstance(weights, np.ndarray)
@@ -274,12 +278,17 @@ class ConfusionMatrix(object):
         ):
             # Weighted MI from Guiasu 1977
             mutual_info = (
-                weights.flatten() * joint_distrib
-                * log(joint_distrib / denom)
+                weights.flatten() * joint_distrib[nonzero]
+                * log(joint_distrib[nonzero] / denom[nonzero])
             ).sum()
         else:
-            mutual_info = (joint_distrib * log(joint_distrib / denom)).sum()
+            mutual_info = (
+                joint_distrib[nonzero]
+                * log(joint_distrib[nonzero] / denom[nonzero])
+            ).sum()
 
+        # TODO able to avoid re-calc of marginals by simply calling scipy
+        # entropy here! Also avoiding two func calls.
         if normalized is None:
             return mutual_info
         if normalized == 'arithmetic':
