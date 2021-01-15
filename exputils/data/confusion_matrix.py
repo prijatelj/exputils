@@ -196,6 +196,47 @@ class ConfusionMatrix(object):
         # Provide the recall per class
         return recalls
 
+    def true_positive(self, label=None):
+        if label is None:
+            return np.diag(self.mat)
+        return np.diag(self.mat)[label]
+
+    def false_positive(self, label=None):
+        """Calculates the False Positives either of every class or a specified
+        slice.
+
+        Parameters
+        ----------
+        label : np.ndarry slice
+            A slice of the conufsion matrix indices, NOT the labels themselves
+        """
+        # TODO again, support for NominalDataEncoder would make labels able to
+        # support the actual labels
+        if label is None:
+            return self.mat.sum(0) - np.diag(self.mat)
+        return self.mat[label].sum() - self.mat[label, label]
+
+    def false_negative(self, label=None):
+        """Calculates the False Negatives of every class or a specified slice.
+        """
+        if label is None:
+            return self.mat.sum(1) - np.diag(self.mat)
+        mask = np.ones(self.mat.shape[0]).astype(bool)
+        mask[label] = False
+        return self.mat[:, label].sum() - self.mat[label, label]
+
+    def false_rates(self, label):
+        """Calcuate the False Positive/Negative Rates for a single label."""
+        tp = self.true_positive(label)
+        fp = self.false_positive(label)
+        fn = self.false_negative(label)
+        tn = self.mat.sum() - tp - fp - fn
+
+        fpr = fp / (fp + tn)
+        fnr = fn / (tp + fn)
+
+        return fpr, fnr
+
     def f_score(self, beta=1, average='macro', label_weights=None):
         # average match sklearn f1_score: None, "binary", micro, macro,
         # weighted
