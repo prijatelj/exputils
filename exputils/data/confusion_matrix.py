@@ -152,7 +152,7 @@ class ConfusionMatrix(object):
             )),
             np.hstack((
                 self.mat[mask][:, not_mask].sum(0, keepdims=True),
-                self.mat[mask][:, mask].sum(),
+                self.mat[mask][:, mask].sum(keepdims=True),
             )),
         ))
 
