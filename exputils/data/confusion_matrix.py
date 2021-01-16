@@ -122,8 +122,15 @@ class ConfusionMatrix(object):
         ConfusionMatrix
             The resulting reduced confusion matrix.
         """
-        if reduced_label in self.labels and reduced_label not in labels:
-            labels = np.append(labels, reduced_label)
+        if inverse:
+            if reduced_label in self.labels and reduced_label in labels:
+                labels = np.delete(
+                    labels,
+                    np.where(labels == reduced_label)[0][0],
+                )
+        else:
+            if reduced_label in self.labels and reduced_label not in labels:
+                labels = np.append(labels, reduced_label)
 
         # TODO the use of the nominal label encoder would be good here.
         mask = np.zeros(len(self.labels)).astype(bool)
@@ -132,27 +139,26 @@ class ConfusionMatrix(object):
 
         if inverse:
             # Numpy mask in where= ignores False from the calculation.
+            not_mask = mask
             mask = np.logical_not(mask)
+        else:
+            not_mask = np.logical_not(mask)
 
-        # TODO optionally do in place, and Test to make sure this default
-        # returns a copy.
-        mat = self.mat.copy()
-
-        row_sum = mat[mask].sum(
-            0,
-            where=np.logical_not(mask),
-            keepdims=True,
-        )
-        reduced_cm = np.vstack((mat[np.logical_not(mask)], row_sum))
-
-        col_sum = reduced_cm[:, mask].sum(1, keepdims=True)
-        reduced_cm = np.hstack((reduced_cm[:, np.logical_not(mask)], col_sum))
-
-        reduced_cm[-1, -1] = mat[mask, mask].sum()
+        # Construct reduced st reduced label is last index
+        reduced_cm = np.vstack((
+            np.hstack((
+                self.mat[not_mask][:, not_mask],
+                self.mat[not_mask][:, mask].sum(1),
+            )),
+            np.hstack((
+                self.mat[mask][:, not_mask].sum(0),
+                self.mat[mask][:, mask].sum(),
+            )),
+        ))
 
         return ConfusionMatrix(
             reduced_cm,
-            labels=np.append(self.labels[np.logical_not(mask)], reduced_label),
+            labels=np.append(self.labels[not_mask], reduced_label),
         )
 
     # TODO methods for the metrics able to be derived from the confusion matrix
