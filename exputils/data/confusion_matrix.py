@@ -63,20 +63,20 @@ class ConfusionMatrix(object):
                 ]))
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
-            self.mat = confusion_matrix(
-                targets,
-                preds,
-                labels=labels,
-                *args,
-                **kwargs,
-            )
-
             if isinstance(labels, list):
                 self.labels = np.array(labels)
             elif isinstance(labels, np.ndarray):
                 self.labels = labels
             else:
                 self.labels = np.array(list(set(targets) | set(preds)))
+
+            self.mat = confusion_matrix(
+                targets,
+                preds,
+                labels=self.labels,
+                *args,
+                **kwargs,
+            )
 
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
