@@ -174,7 +174,7 @@ class ConfusionMatrix(object):
             raise NotImplementedError('Use sklearn.metrics on the samples')
         return 1.0 - self.accuracy()
 
-    def true_rate(self, average=False, label_weights=None):
+    def true_rate(self, label=None, average=False, label_weights=None):
         """Recall, sensitivity, hit rate, or true positive rate. This is
         calculated the same as specificity, selectivity or true negative rate,
         but on the different classes.
@@ -185,8 +185,15 @@ class ConfusionMatrix(object):
             if True, averages all true class rates together. Otherwise, returns
             the true rate per class in order of labels.
         """
-        recalls = np.diagonal(self.mat) / self.mat.sum(axis=1)
+        #recalls = np.diagonal(self.mat) / self.mat.sum(axis=1)
+        if label is None:
+            tp = self.true_positive()
+            return tp / (tp + self.false_negative())
 
+        tp = self.true_positive(label)
+        return tp / (tp + self.false_negative(label))
+
+        """
         if average:
             if label_weights is not None:
                 raise NotImplementedError('Use sklearn.metrics on the samples')
@@ -195,6 +202,7 @@ class ConfusionMatrix(object):
 
         # Provide the recall per class
         return recalls
+        """
 
     def true_positive(self, label=None):
         if label is None:
