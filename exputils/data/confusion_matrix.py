@@ -148,10 +148,10 @@ class ConfusionMatrix(object):
         reduced_cm = np.vstack((
             np.hstack((
                 self.mat[not_mask][:, not_mask],
-                self.mat[not_mask][:, mask].sum(1),
+                self.mat[not_mask][:, mask].sum(1, keepdims=True),
             )),
             np.hstack((
-                self.mat[mask][:, not_mask].sum(0),
+                self.mat[mask][:, not_mask].sum(0, keepdims=True),
                 self.mat[mask][:, mask].sum(),
             )),
         ))
