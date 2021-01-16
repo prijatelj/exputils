@@ -246,6 +246,11 @@ class ConfusionMatrix(object):
         fn = self.false_negative(label)
         tn = self.mat.sum() - tp - fp - fn
 
+        logging.debug('tp = %f', tp)
+        logging.debug('tn = %f', tn)
+        logging.debug('fp = %f', fp)
+        logging.debug('fn = %f', fn)
+
         fpr = fp / (fp + tn)
         fnr = fn / (tp + fn)
 
