@@ -1,6 +1,7 @@
 ## Experiment Utils
 
 Convenient scripts and functions that are commonly used in code for running experiments, specifically machine learning experiments.
+This project is intended to expedite the research coding process.
 
 The main components are:
 
@@ -8,7 +9,31 @@ The main components are:
 - data: kfold cv wrapper and abstract data class
 - visuals: Visualization scripts for common plots via pyplot
 
-### TODO
+### Design Principles
+
+- Keep it simple
+    - and functional
+- Write once
+    - reduce redundant code and make it so common code does not need be rewritten for the same functionality.
+- Modularity
+    - Keep as modular as possible such that each unit may be removed, replaced, or taken and plugged into a different system.
+- Efficiency
+    - efficient coding and execution
+
+### Features
+
+- exputils.data
+    - Confusion matrix: streamlines obtaining, modifying, combining, deriving summary measures, saving/loading, and visualizing of confusion matrices.
+    - exputils.data.handlers
+- exputils.io
+- exputils.ml
+- exputils.profile
+- exputils.ray
+- exputils.visuals
+
+
+#### TODO
+
 + Add general configuration file handling and connect to the default initial argparser.
     - support yaml and JSON
 + Improve the NestedNamespace creation process so it is simpler and streamlined.
@@ -16,3 +41,8 @@ The main components are:
     - the nested namespaces have args mutually exclusive only to their current namespace (node in the namespace tree), allowing separate namespaces to use the same argument name as another.
         + This requires the command line interface to provide the argparse namespace identifier when the user supplies arguments. (i.e. long arg format)
         e.g. path from top level namespace to the node of the nested namespace whose args are being modified.
+
+### License
+
+The exputils project is licensed under the MIT license.
+The license is provided in LICENSE.txt
