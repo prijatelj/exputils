@@ -15,6 +15,7 @@ from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
 
+# TODO ConfusionTensor
 
 class ConfusionMatrix(object):
     """Confusion matrix for nominal data that wraps the
@@ -31,6 +32,15 @@ class ConfusionMatrix(object):
         labels : list, optional
             The labels for the row and columns of the confusion matrix
         """
+
+        # TODO Add optional class weights attribute, allowing it to be
+        # overwritten for when the measures are claculated via a param
+
+        # TODO add sample weights param to init here to affect calc of conf
+
+        # TODO perhaps add a matrix of belief/reliability per pairwise class
+        # expressed by some probability per element
+
         if preds is None:
             if (
                 (
@@ -91,6 +101,7 @@ class ConfusionMatrix(object):
             if True, averages all true class rates together. Otherwise, returns
             the true rate per class in order of labels.
         """
+        # TODO check this and make a unit test for it.
         recalls = np.diagonal(self.mat) / self.mat.sum(axis=1)
 
         if average:
