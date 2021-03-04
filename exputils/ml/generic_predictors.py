@@ -1,5 +1,6 @@
-"""Abstract classes for predictors of different types. Intended to organize
-creation of predictors."""
+"""Abstract or Generic classes for predictors of different types. Intended to organize
+creation of predictors.
+"""
 from abc import ABC, abstractmethod
 import pickle
 import gzip
