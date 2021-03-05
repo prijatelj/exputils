@@ -385,3 +385,28 @@ def load_confusion_mat(
             loaded_confusion_mat = h5f[conf_mat_key][:]
 
     return ConfusionMatrix(loaded_confusion_mat, labels=labels)
+
+
+class ConfusionMatrices(ConfusionMatrix):
+    """Multiple confusion matrices with an arbitrary tensor serving as the
+    indices, where each index is a confusion matrix. The indexing tensor may
+    consist of nominal values, thus using the NominalDataEncoder.
+
+    This extends ConfusionMatrix and is a slice of the sparse ConfusionTensor
+    if each of the different confusion matrices were different discrete random
+    variables being compared.
+    """
+    raise NotImplementedError()
+
+
+class ConfusionTensor(ConfusionMatrix):
+    """A Confusion Tensor of M dimensions all of length N, resulting in the
+    shape `[N_1, N_2, ..., N_M]`.
+    """
+    raise NotImplementedError()
+
+    # TODO All the above measures need generalized such that they are applied
+    # to a matrix slice. The idea is to generalize them for this Tensor or a
+    # slice of this Tensor, thus needing to work on sparse np.ndarrays and
+    # easily apply to both cases, w/ this possibly being the Parent of
+    # ConfusionMatrix and ConfusionMatrices.

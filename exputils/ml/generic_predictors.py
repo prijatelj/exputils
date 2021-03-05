@@ -83,3 +83,8 @@ class SupervisedClassifier(SupervisedLearner):
     @property
     def labels(self):
         return list(self.label_enc.encoder)
+
+# TODO numpy, python, tensorflow, torch, etc. RandomState class that serves as
+# a single randomstate object and updates whenever it is used by any of these
+# libs, keeping it consistent and easy to manage in a cross lib project.
+# Someone may have done this already.
