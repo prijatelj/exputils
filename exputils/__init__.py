@@ -1,7 +1,17 @@
+__version__ = '0.2.0'
+
 from exputils import io
-from exputils import profile
 from exputils import data
+from exputils import ml
+from exputils import profile
+from exputils import ray
+from exputils import visuals
 
-# TODO decide if kfold is necessary to install here. Perhaps just an example.
-
-__all__ = ['io', 'profile', 'data']
+__all__ = [
+    'io',
+    'data',
+    'ml',
+    'profile',
+    'ray',
+    'visuals',
+]

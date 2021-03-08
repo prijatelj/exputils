@@ -1,4 +1,13 @@
 from setuptools import setup
+import re
+
+def get_property(prop, project):
+    """Gets the given property by name in the project's first init file."""
+    result = re.search(
+        r'{}\s*=\s*[\'"]([^\'"]*)[\'"]'.format(prop),
+        open(project + '/__init__.py').read()
+    )
+    return result.group(1)
 
 long_description = ''
 with open('README.md', 'r') as f:
@@ -10,12 +19,16 @@ with open('requirements.txt', 'r') as f:
 
 setup(
     name='exputils',
-    version='0.2.0',
+    version=get_property('__version__', 'exputils'),
     author='Derek S. Prijatelj',
     author_email='dprijate@nd.edu',
     packages=[
         'exputils',
         'exputils.data',
+        'exputils.io',
+        'exputils.ml',
+        'exputils.ray',
+        'exputils.visuals',
     ],
     #scripts
     description='Convenient functions that are commonly used for running machine learning experiments.',
