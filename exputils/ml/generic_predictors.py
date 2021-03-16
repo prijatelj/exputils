@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 import pickle
 import gzip
 
+import numpy as np
+
 from exputils.data.labels import NominalDataEncoder
 from exputils.io import create_filepath
 
@@ -82,7 +84,7 @@ class SupervisedClassifier(SupervisedLearner):
 
     @property
     def labels(self):
-        return list(self.label_enc.encoder)
+        return np.array(self.label_enc.encoder)
 
 # TODO numpy, python, tensorflow, torch, etc. RandomState class that serves as
 # a single randomstate object and updates whenever it is used by any of these
