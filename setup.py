@@ -10,7 +10,7 @@ with open('requirements.txt', 'r') as f:
 
 setup(
     name='exputils',
-    version='0.1.2',
+    version='0.1.3',
     author='Derek S. Prijatelj',
     author_email='dprijate@nd.edu',
     packages=[
