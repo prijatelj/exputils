@@ -5,8 +5,6 @@ from bidict import OrderedBidict, MutableBidict
 import numpy as np
 from sklearn.utils import validation
 from sklearn.preprocessing import label_binarize
-# TODO decide how to handle the following improper usage of sklearn
-from sklearn.preprocessing._label import _encode_check_unknown
 from sortedcollections import SortedDict, ValueSortedDict
 
 
@@ -273,8 +271,8 @@ class NominalDataEncoder(object):
         if validation._num_samples(keys) == 0:
             return np.array([])
 
-        # Check for unrecognized keys # TODO replace _encode_check_unknown()
-        diff = _encode_check_unknown(keys, np.array(self.encoder))
+        # Check for unrecognized keys # TODO may be able to be more efficient?
+        diff = set(np.unique(keys)) - set(self.encoder)
         if diff:
             #   unknowns=None
             raise ValueError(f'`keys` contains previously unseen keys: {diff}')
@@ -478,7 +476,7 @@ class NominalDataEncoder(object):
         """
         if sep is None:
             with open(filepath, 'w') as openf:
-                openf.write('\n'.join([str(x) for x in self.encoder))
+                openf.write('\n'.join([str(x) for x in self.encoder]))
         else:
             raise NotImplementedError(' '.join([
                 'Saving as any file using separators other than newlines',
