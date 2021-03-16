@@ -272,7 +272,7 @@ class NominalDataEncoder(object):
             return np.array([])
 
         # Check for unrecognized keys # TODO may be able to be more efficient?
-        diff = set(keys) - set(self.encoder)
+        diff = set(np.unique(keys)) - set(self.encoder)
         if diff:
             #   unknowns=None
             raise ValueError(f'`keys` contains previously unseen keys: {diff}')
