@@ -9,32 +9,35 @@ def get_property(prop, project):
     )
     return result.group(1)
 
-long_description = ''
 with open('README.md', 'r') as f:
     long_description = f.read()
 
-install_requires = ''
 with open('requirements.txt', 'r') as f:
     install_requires = f.read()
 
+project_name = 'exputils'
+
 setup(
-    name='exputils',
-    version=get_property('__version__', 'exputils'),
+    name=project_name,
+    version=get_property('__version__', project_name),
     author='Derek S. Prijatelj',
     author_email='dprijate@nd.edu',
     packages=[
-        'exputils',
-        'exputils.data',
-        'exputils.io',
-        'exputils.ml',
-        'exputils.ray',
-        'exputils.visuals',
+        project_name,
+        f'{project_name}.data',
+        f'{project_name}.io',
+        f'{project_name}.ml',
+        f'{project_name}.ray',
+        f'{project_name}.visuals',
     ],
     #scripts
-    description='Convenient functions that are commonly used for running machine learning experiments.',
+    description=' '.join(['
+        Convenient functions that are commonly used for running machine',
+        'learning experiments.',
+    ]),
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/prijatelj/exputils',
+    url=f'https://github.com/prijatelj/{project_name}',
     install_requires=install_requires,
     python_requires='>=3.7',
     classifiers=[
