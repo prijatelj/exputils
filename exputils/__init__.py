@@ -1,3 +1,5 @@
+__version__ = '0.1.3'
+
 from exputils import io
 from exputils import profile
 from exputils import data
