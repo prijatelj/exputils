@@ -494,6 +494,7 @@ class NominalDataEncoder(object):
 # TODO SparseNominalDataEncoder()
 #   Same thing but encoding integers can jump between values, meaning missing
 #   values are expected.... dunno when this is necessary
+
 # TODO consider the following, but it is only necessary if there are holes
 # in the encoder, which there should never be. Probs best to leave to user
 # or child class.
@@ -501,7 +502,5 @@ class NominalDataEncoder(object):
 #    The maximum integer encoding in the current encoder
 #min_enc : int
 #    The minimum integer encoding in the current encoder
-
-
 
 # TODO class OrdinalDataEncoder: an ordinal data version
