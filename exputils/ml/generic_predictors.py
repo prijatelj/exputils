@@ -10,8 +10,6 @@ import numpy as np
 from exputils.data.labels import NominalDataEncoder
 from exputils.io import create_filepath
 
-from hwr_novelty.labels import CharEncoder
-
 
 class Stateful(object):
     """Generic class for a stateful object who needs save and load methods."""
@@ -29,6 +27,9 @@ class Stateful(object):
         # Generic save using pickle with gzip compression
         with gzip.open(create_filepath(filepath, overwrite), 'wb') as openf:
             openf.write(pickle.dumps(self))
+
+        # TODO add option to save params to json/yaml . . . ?
+        #   At least add to dict (vars) and __str__ version
 
     @staticmethod
     def load(filepath):
