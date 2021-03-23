@@ -1,3 +1,4 @@
+from importlib import import_module
 __version__ = '0.2.0'
 
 __all__ = [
@@ -11,4 +12,4 @@ __all__ = [
 ]
 
 for module in __all__:
-    exec(f'from exputils import {module}')
+    globals()[module] = import_module(f'.{module}', 'exputils')
