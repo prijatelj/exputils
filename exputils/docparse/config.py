@@ -52,7 +52,7 @@ import re
 # issues mismatching docstring to object, and optionally creates the argparse
 # parser for that object using the information from the docstring.
 
-class DocStringConfig(object):
+class DocstringConfig(object):
     """Create argparse compatible configuration objects from objects in Python
     as determined by their docstring (`__doc__`).
 
@@ -236,8 +236,6 @@ class DocStringConfig(object):
 
 
     def get_func_argparser(
-
-    def from_func(
         self,
         parser,
         func,
