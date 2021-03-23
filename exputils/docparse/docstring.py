@@ -88,7 +88,10 @@ class DocstringParser(object):
             docstring = NumpyDocstring(docstring, self.config)
 
         # TODO parse the RST docstring
+        #   TODO get short description, long description.
+        #   TODO find Parameters/Args and other Param like sections.
+        #   TODO Get all param names, their types (default to object w/ logging
+        #   of no set type), and their descriptions
 
-        # Find the Parameters/Arguments section(s)
-
+        # Return the Docstring Object that stores that docsting ingo
         return Docstring()
