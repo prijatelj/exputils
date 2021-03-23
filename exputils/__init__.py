@@ -10,4 +10,5 @@ __all__ = [
     'visuals',
 ]
 
-from exputils import __all__
+for module in __all__:
+    exec(f'from exputils import {module}')
