@@ -1,5 +1,7 @@
 """Code for managing docstring parsing and conversion."""
-from dataclasses import dataclass
+from enum import Flag, unique
+from dataclasses import dataclass, InitVar
+from keyword import iskeyword
 
 from sphinx.ext.autodoc import getdoc, prepare_docstring
 from sphinx.ext.napoleon import Config, GoogleDocstring, NumpyDocstring
@@ -10,30 +12,77 @@ from sphinx.ext.napoleon import Config, GoogleDocstring, NumpyDocstring
 # Parse that restructured text to obtain the args, arg types, decsriptions,
 # etc.
 
+# TODO, I need the first working version of this done and while it seems like
+# it would make the most sense to use and/or modify the sphinx DocTree of
+# classes and functions to manage the OOP of docstrings, the sphinx docs and
+# code upon my 3 attempts at reading and understanding did not yeild a
+# sufficient enough understanding to be able to implement this probably more
+# desirable approach. I think, if it is posisble to use the sphinx DocTree of
+# classes and functions within the code itself, it would be best to rely on
+# this pre-existing backbone and avoid redundancy.
+
+# TODO, uncertain if this already exists, e.g. in Sphinx, but would be nice if
+# we could go from the OOP representation of a docstring to the actual str
+# easily, and swap styles. Probably similar to how Google and Numpy docs are
+# parsed, where they are converted to reStructuredText and then parsed. So,
+# output Docstring Object to str of RST and then optionally convert to Google
+# or Numpy.
+
+@unique
+class ValueExists(Flag):
+    """Enum for standing in for a non-existent default value."""
+    true = True
+    false = False
+
+
 # TODO Docstring object that contains the parts of the docstring post parsing
+@dataclass
+class VariableDoc(object):
+    """Dataclass for return objects in docstrings."""
+    name : InitVar[str]
+    type : type = ValueExists.false
+    description : str
+
+    def __post_init__(self, name):
+        if name.isidentifier() and not iskeyword(name):
+            self.name = name
+        else:
+            raise ValueError(f'`name` is an invalid variable name: `{name}`')
 
 @dataclass
-class Parameter(object):
+class Parameter(VariableDoc):
     """Dataclass for parameters in docstrings."""
+    default : object = ValueExists.false
 
 @dataclass
-class Docstring(object):
+class Docstring(VariableDoc):
     """Docstring components.
 
     Attributes
     ----------
-    style
+    short_description : str
+        The short description of the docstring.
+    args : str
+        The function's Arguments/Parameters or the class' Attributes.
     """
-    def __init__(self)
+    short_description : str
+    args : {str : ParameterDoc}
+    return_doc : InitVar[VariableDoc]
+    # TODO general sections: {section_name : str}
+
+    def __post_init__(self, args, return_doc):
         raise NotImplementedError()
 
     def get_str(self, style):
-        """Returns the docstring as a string in the given style.
+        """Returns the docstring as a string in the given style. Could simply
+        be __str__() and always return RST, and make available RST to
+        Google/Numpy functions/classes.
+
         Args
         ----
         style : {'rst', 'google', 'numpy'}
             The style to output the Docstring's contents. `rst` is shorthand
-            for reStructuredText,
+            for reStructuredText.
 
         Returns
         -------
@@ -48,6 +97,8 @@ class DocstringParser(object):
 
     Attributes
     ----------
+    style : {'rst', 'numpy', 'google'}
+        The style to expect to parse.
     """
     def __init__(self, style, doc_linking=False):
         if (style := style.lower()) not in {'rst', 'numpy', 'google'}:
