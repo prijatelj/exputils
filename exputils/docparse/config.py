@@ -395,3 +395,7 @@ def get_argparser(obj, *args, **kwargs):
 # TODO Nicety: given linting etc, would be nice if triple double quotes, which
 # tends to be reserved for docstrings, had an optional syntax highlighting,
 # esp. in vim, since we're treating it more like code anyways.
+
+# TODO the Args/Attributes in Numpy style / modded to exputils is essentially
+# one-to-one with how dataclasses variables are assigned, just with their
+# description following them.

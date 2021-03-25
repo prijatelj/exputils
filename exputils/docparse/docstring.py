@@ -98,7 +98,8 @@ class DocstringParser(object):
     Attributes
     ----------
     style : {'rst', 'numpy', 'google'}
-        The style to expect to parse.
+        The style expected to parse.
+    doc_linking : bool, default False
     """
     def __init__(self, style, doc_linking=False):
         if (style := style.lower()) not in {'rst', 'numpy', 'google'}:
@@ -117,9 +118,11 @@ class DocstringParser(object):
         ----
         docstring : str
             docstring to be parsed
-        doc_linking : str
+        doc_linking : bool, default False
             Linked docstring whose content applies to this docstring and will
             be parsed recursively.
+
+            Add whitelisting of which packages to allow recursive doc linking
 
         Returns
         -------

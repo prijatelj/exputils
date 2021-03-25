@@ -1,10 +1,15 @@
-## Argconfig
+## Docparse
 
 Adjustments to the argument and config parsers in python with the intention to expedite the coding process, as well as make it easier to manage and extend.
+Properly written docstrings contain the same information needed for creating an argparse or configuration parser, thus allowing these to be created from the parsed docstrings.
+Some other common code writing tasks can also be automatically completed to reduce redundant code.
 
 ### Features
 
 . . .
+
+Relies on python dataclasses to contain the args and wraps parts of Sphinx for auto-documentation, (probably) ConfigArgparse for better configuration file support stand-in for argparse, and (possibly) pydantic for optional dataclass runtime type checking.
+Turning the args/attributes sections of docstrings into extended dataclass code w/ following descriptoins.
 
 #### TODO
 
