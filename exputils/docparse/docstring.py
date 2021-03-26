@@ -186,7 +186,7 @@ class DocstringParser(object):
                 "Expected `style` = 'rst', 'numpy', or 'google', not `{style}`"
             )
         # TODO allow the passing of a func/callable to transform custom doc
-        # styles
+        # styles, thus allowing users to easily adapt to their doc style
         self.style = style
         self.doc_linking = doc_linking
 
@@ -198,23 +198,39 @@ class DocstringParser(object):
         else:
             self.config = config
 
-        self.re_param_or_returns = re.compile(':(?:param|returns)')
+        # TODO section tokenizer (then be able to tell if the section is one of
+        #   param/arg or type and to pair those together.
+        #   attribute sections `.. attribute:: attribute_name`
 
-        # Regex for RST field and directive, and together for sections
+        # Regexes for RST field and directive, and together for sections
         self.re_field = re.compile(':[ \t]*(\w[ \t]*)+:')
         self.re_directive = re.compile('\.\.[ \t]*(\w[ \t]*)+:')
         self.re_section = re.compile(
             '|'.join([self.re_field.pattern, self.re_directive])
         )
 
-        # TODO section tokenizer (then be able to tell if the section is one of
-        #   param/arg or type and to pair those together.
-        #   attribute sections `.. attribute:: attribute_name`
+        # Temporary useful patterns
+        section_end_pattern = f'({self.re_section.pattern}|\Z)'
+        name_pattern = '[ \t]+(?P<name>[\*\w]+)'
+        doc_pattern = f'[ \t]*(?P<doc>.*?){section_end_pattern}'
 
-        self.re_returns = re.compile(':returns: (?P<doc>.*)', re.S)
-        self.re_param = re.compile(
-            ':param: (?P<name>[\*\w]+): (?P<doc>.*?)'
-                + '(?:(?=:param)|(?=:return)|(?=:raises)|\Z)',
+        # Regexes for checking and parsing the types of sections
+        self.re_param = re.compile(f':param{name_pattern}:{doc_pattern}', re.S)
+        self.re_type = re.compile(f':type{name_pattern}:{doc_pattern}', re.S)
+
+        self.re_returns = re.compile(':returns:{doc_pattern}', re.S)
+        self.re_returns = re.compile(':rtype:{doc_pattern}', re.S)
+
+        self.re_attribute = re.compile(
+            f'\.\.[ \t]*attribute[ \t]*::{name_pattern}[ \t]*\n{doc_pattern}',
+            re.S,
+        )
+        # TODO extract attribute type ':type: <value>\n'
+
+        #self.re_other_params = re.compile()
+
+        self.re_rubric = re.compile(
+            f'\.\.[ \t]*attribute[ \t]*::{name_pattern}[ \t]*\n{doc_pattern}',
             re.S,
         )
 
