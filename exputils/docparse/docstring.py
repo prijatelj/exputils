@@ -186,32 +186,60 @@ class DocstringParser(object):
         param_set = set()
         type_set = set()
 
+        if len(docstring) < 1:
+            raise ValueError('The docstring is only a short description!')
+
         # Short description is always the first line only
         short_description = docstring[0]
 
         # TODO Get the start indices of any & all sections (Could parallelize)
         section_start_indices = []
-        param_indices = []
-        type_indices = []
-        attr_indices = []
-        returns = None
-        rtype = None
         # TODO this would be way nicer with a kind of top down tokenization
         # where each token then can be further broken down, so Section, then
         # the section type, then its parts. This is where the above dataclasses
         # having their own parser functions for RST would be good. This would
         # probably involve back tracking tho and multiple passes.
-        for i, line in enumerate(docstring):
+        for i, line in enumerate(docstring[1:], start=1):
             if self.re_section.match(line)
                 section_start_indices.append(i)
 
-                if self.re_param.match(line):
+        # Long description initial text till next section or end of str.
+        # TODO consider smarter combine to avoid forced column lengths in desc
+        long_description = '\n'.join(docstring[:section_start_indices[0]])
+
+        num_sections = len(section_start_indices)
+        if num_sections < 1:
+            raise ValueError('The given docstring includes no sections.')
+        elif num_sections == 1:
+            # TODO if 1 section, then check if params, ow. error
+            if not param_parsed := self.re_param.match():
+                raise ValueError(
+                    'The docstring does not include a parameters section!'
+                )
+            # TODO do something with param_parsed, and make param regex extract
+            # the name and doc.
+        else:
+            # TODO check first section and for rest loop thru the sections by
+            # [start_idx:end] where end is the current itr and prior updates to
+            # this sections beginning.
+
+            # Add the end value so a check is unnecessary repetitively
+            section_start_indices.append(len(docstring))
+
+            param_indices = []
+            type_indices = []
+            attr_indices = []
+            returns = None
+            rtype = None
+            for i, line in enumerate(section_start_indices[1:], start=1):
+                # TODO parse the section between docstring[i - 1:i]
+                if section_parsed := self.re_param.match(line):
                     param_indices.append(i)
-                elif self.re_type.match(line):
+                elif section_parsed := self.re_type.match(line):
                     param_indices.append(i)
-                elif self.attribute.match(line):
+                elif section_parsed := self.attribute.match(line):
                     attr_indices.append(i)
-                elif self.re_returns.match(line):
+                elif section_parsed := self.re_returns.match(line):
                     if returns is None:
                         returns = PARSE_RETURNS_SECTION
                     else:
@@ -219,7 +247,7 @@ class DocstringParser(object):
                             'The docstring cannot have more than one',
                             '`returns` section.',
                         ]))
-                elif self.re_rtype.match(line):
+                elif section_parsed := self.re_rtype.match(line):
                     if rtype is None:
                         rtype = PARSE_RTYPE_SECTION
                     else:
@@ -227,22 +255,14 @@ class DocstringParser(object):
                             'The docstring cannot have more than one `rtype`',
                             'section.',
                         ]))
-
-        # Long description initial text till next section or end of str.
-        if len(section_start_indices) < 1:
-            raise ValueError('The given docstring includes no sections.')
-        # TODO replace w/ replacement of all empty str lines w/ \n and then
-        # join w/ spaces
-        long_description = '\n'.join(docstring[:section_start_indices[0]])
+                # else: Some other section, save as {str : str} in other_sectios
 
         # Rejoin lines into one str for regex. This strikes me as inefficient
-        docstring = '\n'.join(docstring)
-
-        # Find all sections (field lists in RST for python docstrings)
-
+        #docstring = '\n'.join(docstring)
 
         # Return the Docstring Object that stores that docsting info
         raise NotImplemented()
+
     def parse(
         obj,
         style=None,
