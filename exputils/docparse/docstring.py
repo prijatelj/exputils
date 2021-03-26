@@ -42,11 +42,11 @@ class ValueExists(Flag):
 # TODO For each of these dataclasses, make them tokenizers for their respective
 # parts of the docstring and string call them during parsing
 @dataclass
-class VariableDoc(object):
+class VariableDoc:
     """Dataclass for return objects in docstrings."""
     name : InitVar[str]
-    type : type = ValueExists.false
     description : str
+    type : type = ValueExists.false
 
     def __post_init__(self, name):
         if name.isidentifier() and not iskeyword(name):
@@ -58,7 +58,23 @@ class VariableDoc(object):
 @dataclass
 class ParameterDoc(VariableDoc):
     """Dataclass for parameters in docstrings."""
-    default : object = ValueExists.false
+    default : InitVar[object] = ValueExists.false
+
+    def __post_init__(self, default):
+        # TODO generalize this by extending InitVar to perform this in init.
+        # Default the "empty" value to None, possibly removing need to specify
+        # `= None` in the dataclass part. Just to expedite this cuz it is now
+        # repeated in this code, which itself is meant to expedite through
+        # write once... Probably would not inherity from InitVar, but do
+        # something similar-ish. Moreso generate the code snippet in the
+        # generated __init__(). could possibly even reorder positional args
+        # based on the order of inheritance.
+        if default is None:
+            raise TypeError(' '.join([
+                'ParameterDoc() missing 1 required positional argument:',
+                '`default` Provide via keyword, if able to through position.',
+            ]))
+        self.default = default
 
 
 @dataclass
@@ -72,8 +88,17 @@ class Docstring(VariableDoc):
     args : str
         The function's Arguments/Parameters or the class' Attributes.
     """
-    short_description : str
-    other_sections: OrderedDict({str : str})
+    short_description : InitVar[str] = None
+    other_sections: OrderedDict({str : str}) = None
+
+    def __post_init__(self, short_description):
+        if short_description is None:
+            raise TypeError(' '.join([
+                'Docstring() missing 1 required positional argument:',
+                '`short_description` Provide via keyword, if able to through',
+                'position.',
+            ]))
+        self.short_description  = short_description
 
 
 @dataclass
@@ -87,9 +112,17 @@ class FuncDocstring(Docstring):
     args : str
         The function's Arguments/Parameters or the class' Attributes.
     """
-    args : OrderedDict({str : ParameterDoc})
-    other_args : OrderedDict({str : ParameterDoc}) # TODO implement parsing
+    args : InitVar[OrderedDict({str : ParameterDoc})] = None
+    other_args : OrderedDict({str : ParameterDoc}) = None # TODO implement parsing
     return_doc : VariableDoc = ValueExists.false
+
+    def __post_init__(self, args):
+        if args is None:
+            raise TypeError(' '.join([
+                'FuncDocstring() missing 1 required positional argument:',
+                '`args` Provide via keyword, if able to through position.',
+            ]))
+        self.args  = args
 
     def get_str(self, style):
         """Returns the docstring as a string in the given style. Could simply
@@ -115,9 +148,26 @@ class ClassDocstring(Docstring):
     """The multiple Docstrings the make up a class, including at least the
     class' docstring and the __init__ method's docstring.
     """
-    attributes : OrderedDict({str : ParameterDoc})
-    init_docstring : FuncDocstring
-    methods : {str: FuncDocstring}
+    attributes : InitVar[OrderedDict({str : ParameterDoc})] = None
+    init_docstring : InitVar[FuncDocstring] = None
+    methods : {str: FuncDocstring} = None
+
+    def __post_init__(self, attributes, init_docstring):
+        if attributes is None:
+            raise TypeError(' '.join([
+                'ClassDocstring() missing 1 required positional argument:',
+                '`attributes` Provide via keyword, if able to through',
+                'position.',
+            ]))
+        self.attributes  = attributes
+
+        if init_docstring is None:
+            raise TypeError(' '.join([
+                'ClassDocstring() missing 1 required positional argument:',
+                '`init_docstring` Provide via keyword, if able to through',
+                'position.',
+            ]))
+        self.init_docstring  = init_docstring
 
 
 class DocstringParser(object):
@@ -150,6 +200,13 @@ class DocstringParser(object):
 
         self.re_param_or_returns = re.compile(':(?:param|returns)')
 
+        # Regex for RST field and directive, and together for sections
+        self.re_field = re.compile(':[ \t]*(\w[ \t]*)+:')
+        self.re_directive = re.compile('\.\.[ \t]*(\w[ \t]*)+:')
+        self.re_section = re.compile(
+            '|'.join([self.re_field.pattern, self.re_directive])
+        )
+
         # TODO section tokenizer (then be able to tell if the section is one of
         #   param/arg or type and to pair those together.
         #   attribute sections `.. attribute:: attribute_name`
@@ -161,7 +218,7 @@ class DocstringParser(object):
             re.S,
         )
 
-    def parse_func(docstring, name, obj_type):
+    def parse_func(self, docstring, name, obj_type):
         """Parse the docstring of a function."""
         docstring = prepare_docstring(docstring)
 
@@ -200,7 +257,7 @@ class DocstringParser(object):
         # having their own parser functions for RST would be good. This would
         # probably involve back tracking tho and multiple passes.
         for i, line in enumerate(docstring[1:], start=1):
-            if self.re_section.match(line)
+            if self.re_section.match(line):
                 section_start_indices.append(i)
 
         # Long description initial text till next section or end of str.
@@ -212,7 +269,7 @@ class DocstringParser(object):
             raise ValueError('The given docstring includes no sections.')
         elif num_sections == 1:
             # TODO if 1 section, then check if params, ow. error
-            if not param_parsed := self.re_param.match():
+            if not (param_parsed := self.re_param.match()):
                 raise ValueError(
                     'The docstring does not include a parameters section!'
                 )
@@ -226,9 +283,8 @@ class DocstringParser(object):
             # Add the end value so a check is unnecessary repetitively
             section_start_indices.append(len(docstring))
 
-            param_indices = []
-            type_indices = []
-            attr_indices = []
+            param = []
+            types = []
             returns = None
             rtype = None
             for i, line in enumerate(section_start_indices[1:], start=1):
@@ -328,7 +384,7 @@ class DocstringParser(object):
 
                 raise NotImplementedError('Need to add parsing of a class')
                 # TODO add parsing of a class' methods in given list.
-                return ClassDocstring(name, obj_type, description
+                return ClassDocstring(name, obj_type, description, )
 
             return self.parse_func(obj.__doc__, name, obj_type)
         else:
