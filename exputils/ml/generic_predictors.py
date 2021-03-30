@@ -31,6 +31,9 @@ class Stateful(object):
         # TODO add option to save params to json/yaml . . . ? (opt. compress)
         #   At least add to dict (vars) and __str__ version
 
+        # TODO make the different generic saves/loads be their own functions
+        # that are called here and then may be called elsewhere too.
+
     @staticmethod
     def load(filepath):
         """Given filepath, load the saved state of the object."""
