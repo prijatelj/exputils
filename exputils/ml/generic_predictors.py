@@ -28,7 +28,7 @@ class Stateful(object):
         with gzip.open(create_filepath(filepath, overwrite), 'wb') as openf:
             openf.write(pickle.dumps(self))
 
-        # TODO add option to save params to json/yaml . . . ?
+        # TODO add option to save params to json/yaml . . . ? (opt. compress)
         #   At least add to dict (vars) and __str__ version
 
     @staticmethod
