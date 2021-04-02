@@ -612,14 +612,16 @@ class ConfusionMatrices(ConfusionMatrix):
     if each of the different confusion matrices were different discrete random
     variables being compared.
     """
-    raise NotImplementedError()
+    def __init__(self):
+        raise NotImplementedError()
 
 
 class ConfusionTensor(ConfusionMatrix):
     """A Confusion Tensor of M dimensions all of length N, resulting in the
     shape `[N_1, N_2, ..., N_M]`.
     """
-    raise NotImplementedError()
+    def __init__(self):
+        raise NotImplementedError()
 
     # TODO All the above measures need generalized such that they are applied
     # to a matrix slice. The idea is to generalize them for this Tensor or a

@@ -5,6 +5,11 @@ import pandas as pd
 
 # TODO PostgreSQL config parser w/ psycopg2
 
+# TODO this may not be a real generic, as it does not easily turn into all the
+# other PyTorch Dataset classes...
+# So perhaps some basic tools commonly used when making Dataset classes and
+# data loaders would be best?
+
 class GenericDataset(object):
     """Generic Dataset specification intended to be the backbone to all dataset
     specifications and loaders, across Tensorflow and Pytorch.

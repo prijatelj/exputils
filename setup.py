@@ -25,14 +25,14 @@ setup(
     packages=[
         project_name,
         f'{project_name}.data',
-        f'{project_name}.io',
+        #f'{project_name}.io',
         f'{project_name}.ml',
         f'{project_name}.ray',
         f'{project_name}.visuals',
     ],
     #scripts
-    description=' '.join(['
-        Convenient functions that are commonly used for running machine',
+    description=' '.join([
+        'Convenient functions that are commonly used for running machine',
         'learning experiments.',
     ]),
     long_description=long_description,
