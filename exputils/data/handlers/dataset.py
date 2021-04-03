@@ -12,7 +12,9 @@ import pandas as pd
 
 class GenericDataset(object):
     """Generic Dataset specification intended to be the backbone to all dataset
-    specifications and loaders, across Tensorflow and Pytorch.
+    specifications and loaders, across Tensorflow and Pytorch. Simply put, the
+    generic code for loading from common data sources, such as csv, tsv, hdf5,
+    and databases.
     """
 
     def __init__(self, filepath, *args, **kwargs):
@@ -38,11 +40,23 @@ class GenericDataset(object):
     def __len__(self):
         raise NotImplementedError()
 
-    def __get_item__(self):
+    def __getitem__(self):
         raise NotImplementedError()
+
+        # TODO to implement slicing, the databackend must support it. This is
+        # why there is IterableDataset in PyTorch. If a backend is akin to a
+        # dict/map, then perhaps treat it as an OrderedDict, or make a more
+        # specific generic subclass that will.
+        # NOTE to have both iterable and map by id, you essentially want the
+        # pandas.DataFrame, just efficient for I/O things
 
     def __add__(self, other):
         """Generic concatenation of datasets, similar to python lists."""
         raise NotImplementedError()
 
     # TODO implement numpy style slicing??
+
+    # TODO implement partitioning and kfold partitions as a Dataset method?
+
+class GenericIterDataset(GenericDataset):
+    """A generic iterable dataset."""

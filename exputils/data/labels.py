@@ -229,7 +229,7 @@ class NominalDataEncoder(object):
     #        raise ValueError(
     #            '`unknown_idx` is None. No default unknown key or encoding!'
     #        )
-        return self.encoder.inverse[self.unknown_idx]
+    #    return self.encoder.inverse[self.unknown_idx]
 
     def keys(self, *args, **kwargs):
         return self.encoder.keys(*args, **kwargs)
@@ -279,6 +279,8 @@ class NominalDataEncoder(object):
             # TODO allow for assigning a default encoding value if unknown
             # label: i.e. not in the current encoder
             #   unknowns=default; unknown_idx = 0
+            #   e.g. convert_to_unknown=True; OR unknown_key exists?
+            # basically set `unknown_behavior={'update', 'convert', 'error'}
 
             # TODO XOR allow for updating of the labels in order of occurrence.
             # XOR default is as is, fail if unseen label in encoding.
