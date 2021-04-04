@@ -54,6 +54,11 @@ class GenericDataset(object):
         """Generic concatenation of datasets, similar to python lists."""
         raise NotImplementedError()
 
+        # NOTE this is a bad idea, beacuase in the end, it is probably better
+        # to treat this as a tensor, thus wanting to preserve math ops for
+        # tensor math. So simply add general append, stack, etc... funcs or
+        # methods.
+
     # TODO implement numpy style slicing??
 
     # TODO implement partitioning and kfold partitions as a Dataset method?
