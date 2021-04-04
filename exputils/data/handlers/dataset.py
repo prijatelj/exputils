@@ -63,5 +63,9 @@ class GenericDataset(object):
 
     # TODO implement partitioning and kfold partitions as a Dataset method?
 
-class GenericIterDataset(GenericDataset):
-    """A generic iterable dataset."""
+#class GenericIterDataset(GenericDataset):
+#    """A generic iterable dataset."""
+
+# TODO consider adding a Streaming dataset, or iterable I/O dataset that only
+# reads in portions of the dataset from the source at a time, such as from a DB
+# or from part of a file.
