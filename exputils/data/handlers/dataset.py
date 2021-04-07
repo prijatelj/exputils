@@ -69,3 +69,7 @@ class GenericDataset(object):
 # TODO consider adding a Streaming dataset, or iterable I/O dataset that only
 # reads in portions of the dataset from the source at a time, such as from a DB
 # or from part of a file.
+# If not using a Torch or TF dataset/loader, the consider Dask as a streaming
+# alternative to Pandas for large data files (and parallel). Albeit, not an
+# alternative to a database like PostgreSQL. However, since research code is a
+# mess, its nice for the option to parallelie many csvs or tabular data.
