@@ -39,7 +39,7 @@ setup(
     long_description_content_type='text/markdown',
     url=f'https://github.com/prijatelj/{project_name}',
     install_requires=install_requires,
-    python_requires='>=3.7',
+    python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
