@@ -1,5 +1,6 @@
 ## Experiment Utils
 
+Experiment utilities for expediency.
 Convenient scripts and functions that are commonly used in code for running experiments, specifically machine learning experiments.
 This project is intended to expedite the research coding process.
 
