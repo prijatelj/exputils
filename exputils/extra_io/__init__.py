@@ -5,7 +5,7 @@ __all__ = [
     'create_filepath',
     'filename_append',
     'NestedNamespace',
-    'NumpyJSONEncode'r,
+    'NumpyJSONEncoder',
     'save_json',
     'write',
 ]
