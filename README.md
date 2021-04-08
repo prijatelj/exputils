@@ -1,6 +1,5 @@
-## Experiment Utils
+## Exputils: Experiment Utilities for Expediency
 
-Experiment utilities for expediency.
 Convenient scripts and functions that are commonly used in code for running experiments, specifically machine learning experiments.
 This project is intended to expedite the research coding process.
 
@@ -44,6 +43,11 @@ The main components are:
         e.g. path from top level namespace to the node of the nested namespace whose args are being modified.
 + Perhaps here is not best, but being able to turn any table (csv, tsv) into a LaTeX table would be wonderful for expediency of putting it into a paper.
 + Consider a confusion tensor when addressing multiple random variables, e.g. a tensor with n+1 dimensions: actual/ground truth, predictor 1, predictor 2, ... predictor n.
+
+### Verisoning
+
+Docstr uses [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+Docstr's version will remain < 1.0.0 until adequate unit test coverage exists.
 
 ### License
 
