@@ -406,7 +406,7 @@ class ConfusionMatrix(object):
                 - mutual_info
             )
 
-        raise ValueError('Unexpected value for `normalized`: {normalized}')
+        raise ValueError(f'Unexpected value for `normalized`: {normalized}')
 
     def entropy(self, axis, base=None):
         """Returns the entropy of either the predictions or actual values."""
