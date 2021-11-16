@@ -7,6 +7,11 @@ from sklearn.utils import validation
 from sklearn.preprocessing import label_binarize
 from sortedcollections import SortedDict, ValueSortedDict
 
+# TODO add Torch version of this: support for doing this in Torch code only
+# TODO add Tensorflow version of this: support for doing this in TF code only
+# TODO add JAX version of this: support for doing this in JAX code only
+# TODO If it makes sense to, break dep on sklearn
+
 
 def load_label_set(filepath, sep=None, *args, **kwargs):
     """Loads the given file and reads the labels in. Expects label per line.
@@ -217,6 +222,16 @@ class NominalDataEncoder(object):
         self.unknown = unknown
         #"""
 
+    # TODO make it such that the NDE object may be treated as a numpy array for
+    # convenience in use.
+    # TODO __len__(self):
+    #    return len(self.encoder)
+
+    # TODO __next__(self): iterable over keys or OrderedBidict obj
+
+    # TODO make self.inv a convenience to treat the inverse dict the same way
+    # as above, as a numpy 1d array.
+
     @property
     def keys_sorted(self):
         return isinstance(self.encoder, KeySortedBidict)
@@ -265,6 +280,8 @@ class NominalDataEncoder(object):
                 neg_label=self.neg_label,
                 sparse_output=self.sparse_output,
             )
+
+        # TODO add support for encoding an ndarray of any shape
 
         keys = validation.column_or_1d(keys, warn=True)
 
@@ -329,6 +346,8 @@ class NominalDataEncoder(object):
         if isinstance(one_hot_axis, int):
             encodings = encodings.argmax(axis=one_hot_axis)
             # TODO check encodings.shape to expected shape
+
+        # TODO add support for decoding an ndarray of any shape
 
         encodings = validation.column_or_1d(encodings, warn=True)
         # inverse transform of empty array is empty array
