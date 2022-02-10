@@ -248,6 +248,11 @@ class ConfusionMatrix(object):
         mask[label] = False
         return self.mat[:, label].sum() - self.mat[label, label]
 
+    # NOTE True Negatives for one class has overlap between the other classes'
+    # counts as per class it becomes the sum of everything outside that
+    # classes' row and column index, naturally resulting in overlap in counts
+    # to other classes true negatives.
+
     def false_rates(self, label):
         """Calcuate the False Positive/Negative Rates for a single label."""
         tp = self.true_positive(label)
