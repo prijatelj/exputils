@@ -31,7 +31,7 @@ class OrderedConfusionTensor(ConfusionMatrix):
         preds,
         labels,
         top_k=None,
-        axis=1,
+        #axis=1,
         sort_labels=False,
         targets_idx=True,
         weights=None,
@@ -50,6 +50,9 @@ class OrderedConfusionTensor(ConfusionMatrix):
         # NominalDataEncoder of labels
         self.label_enc = NDE(labels)
 
+        # TODO generalize about axis, esp in the k loop of unique indices
+        axis=1,
+
         assert(preds.shape[axis] == len(labels))
 
         n_classes = len(self.label_enc)
@@ -62,18 +65,10 @@ class OrderedConfusionTensor(ConfusionMatrix):
         # Get top-k predictions, assuming prediction
         top_preds = np.argsort(preds, axis)[:, ::-1][:, :top_k]
 
-        # TODO Create a confusion tensor of ordered confusion? The order is
-        # informtive, and a confusion matrix/tensor or similar construct may
-        # capture this information.
-
         # Cast both targets and preds to their args for a confusion matrix
         # based on label_enc
         if not targets_idx:
             targets = self.label_enc.encode(targets)
-
-        # TODO Repeat targets to align w/ top_preds with the K index, then
-        # scatter_nd would perform the desired k-th ordered confusion matrix
-        # creation.
 
         # TODO decide if supporting weights is even necessary as this is counts
         #    if weights is not None:
@@ -83,16 +78,38 @@ class OrderedConfusionTensor(ConfusionMatrix):
         ordered_cms = np.zeros([top_k, n_classes, n_classes])
         for k in range(top_k):
             unique_idx, unique_idx_counts = np.unique(
-                np.stack([targets, top_preds[:, [k]]], axis=axis),
+                np.stack([targets, top_preds[:, [k]]], axis=0),
                 return_counts=True,
+                axis=1,
             )
             np.add.at(
                 ordered_cms[k],
-                unique_idx.T,
-                #tuple(indices.reshape(-1, indices.shape[-1]).T),
+                tuple(unique_idx.T.reshape(-1, unique_idx.T.shape[-1]).T),
                 unique_idx_counts.ravel(),
             )
         self.tensor = ordered_cms
 
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.
+    def get_per_class_binary_top(self, k, axis1=1, axis2=2):
+        """Returns a matrix of [C, 3] for C classes and the outcome per class
+        using top-k logic of correct prediction (true positive per class)
+        versus the sum of predicting incorrectly (false positive per class).
+        The third vector is the false negatives.
+        """
+        return
+
+def get_cm_tensor(targets, top_preds, top_k, n_classes, axis=0):
+    ordered_cms = np.zeros([top_k, n_classes, n_classes])
+    for k in range(top_k):
+        unique_idx, unique_idx_counts = np.unique(
+            np.stack([targets, top_preds[:, [k]]], axis=axis),
+            return_counts=True,
+            axis=1,
+        )
+        np.add.at(
+            ordered_cms[k],
+            tuple(unique_idx.T.reshape(-1, unique_idx.T.shape[-1]).T),
+            unique_idx_counts.ravel(),
+        )
+    return ordered_cms
