@@ -224,8 +224,8 @@ class NominalDataEncoder(object):
 
     # TODO make it such that the NDE object may be treated as a numpy array for
     # convenience in use.
-    # TODO __len__(self):
-    #    return len(self.encoder)
+    def __len__(self):
+        return len(self.encoder)
 
     # TODO __next__(self): iterable over keys or OrderedBidict obj
 
