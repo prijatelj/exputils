@@ -1,7 +1,9 @@
 """Confusion tensor generalizaiton of the confusion matrix."""
 import numpy as np
+ma = np.ma
 
 from exputils.data.labels import NominalDataEncoder as NDE
+
 
 def scatter_nd_numpy(indices, updates, shape, target=None):
     """Equivalent to tf.scatter_nd()."""
@@ -51,7 +53,7 @@ class OrderedConfusionTensor(ConfusionMatrix):
         self.label_enc = NDE(labels)
 
         # TODO generalize about axis, esp in the k loop of unique indices
-        axis=1,
+        axis=1
 
         assert(preds.shape[axis] == len(labels))
 
@@ -97,7 +99,31 @@ class OrderedConfusionTensor(ConfusionMatrix):
         versus the sum of predicting incorrectly (false positive per class).
         The third vector is the false negatives.
         """
+        true_pos = self.tensor.diagonal(axis1=1, axis2=2).sum(0)
+        non_diag = ma.masked_array(
+            self.tensor,
+            mask=np.stack([np.eye(3, dtype=bool)),
+        )
+        false_pos = non_diag.sum(1)
+        false_neg = non_diag.sum(2)
+        true_positives
         return
+
+    def accuracy(self, k=None):
+        """Top-k accuracy. K is maxed by default if not given. k inclusive"""
+        assert(k is None or k > 0)
+        if k is None:
+            return (
+                self.tensor.diagonal(axis1=1, axis2=2).sum()
+                / self.tensor[0].sum()
+            )
+        return (
+            self.tensor[:k].diagonal(axis1=1, axis2=2).sum()
+            / self.tensor[0].sum()
+        )
+
+    # TODO consider how top-k may relate to the discrete mutual information.
+    # research and look up if any existing measures for this.
 
 def get_cm_tensor(targets, top_preds, top_k, n_classes, axis=0):
     ordered_cms = np.zeros([top_k, n_classes, n_classes])
