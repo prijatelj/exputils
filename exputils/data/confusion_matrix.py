@@ -21,33 +21,6 @@ from exputils.io import create_filepath
 # TODO consider ways to interlink this with LabelEncoder better. If necessary
 
 
-def confusion_matrix(targets, preds, labels=None, top_k=None, dim=0):
-    """Calculates the top-k confusion matrix of occurrence from the pairs.
-
-    Args
-    ----
-    targets :
-    preds :
-    labels : = None
-    top_k : = None
-    """
-    # TODO NominalDataEncoder
-
-    if top_k is not None:
-        assert(isinstance(top_k, int))
-
-        # TODO Get top-k predictions
-        top_preds = np.argsort(preds, dim)[:, ::-1][:, :top_k]
-
-        # TODO Boolean check if target in top_preds: Only good for binary CM
-
-        # TODO Create a confusion tensor of ordered confusion? The order is
-        # informtive, and a confusion matrix/tensor or similar construct may
-        # capture this information.
-
-    return
-
-
 class ConfusionMatrix(object):
     """Confusion matrix of occurrences for nominal data.
     Rows are the known labels and columns are the predictions.
