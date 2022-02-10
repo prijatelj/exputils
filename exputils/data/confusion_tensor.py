@@ -75,26 +75,24 @@ class OrderedConfusionTensor(ConfusionMatrix):
         # scatter_nd would perform the desired k-th ordered confusion matrix
         # creation.
 
+        # TODO decide if supporting weights is even necessary as this is counts
+        #    if weights is not None:
+        #        unique_idx_n *= weights
+
         # TODO Repeat this top_k times
-        ordered_cms = []
+        ordered_cms = np.zeros([top_k, n_classes, n_classes])
         for k in range(top_k):
             unique_idx, unique_idx_counts = np.unique(
                 np.stack([targets, top_preds[:, [k]]], axis=axis),
                 return_counts=True,
             )
-
-            if weights is not None:
-                unique_idx_n *= weights
-
-            ordered_cms.append(
-                scatter_nd_numpy(
-                    unique_idx.T,
-                    updates=unique_idx_counts,
-                    shape=(n_classes, n_classes),
-                )
+            np.add.at(
+                ordered_cms[k],
+                unique_idx.T,
+                #tuple(indices.reshape(-1, indices.shape[-1]).T),
+                unique_idx_counts.ravel(),
             )
-
-        self.tensor = np.stack(ordered_cms)
+        self.tensor = ordered_cms
 
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.
