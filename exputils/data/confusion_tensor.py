@@ -20,7 +20,7 @@ def scatter_nd_numpy(indices, updates, shape, target=None):
         return target
 
 
-class OrderedConfusionTensor(ConfusionMatrix):
+class OrderedConfusionTensor(object):
     """A Tensor of KxCxC where K axisension represents the ordered confusion,
     and max(K) == C with each individual CxC along the K axisenison is the
     ordered slice of the ordered predictions. Looking at one slice of the
@@ -36,7 +36,7 @@ class OrderedConfusionTensor(ConfusionMatrix):
         #axis=1,
         sort_labels=False,
         targets_idx=True,
-        weights=None,
+        #weights=None,
     ):
         """Calculates the top-k confusion matrix of occurrence from the pairs.
 
@@ -53,9 +53,9 @@ class OrderedConfusionTensor(ConfusionMatrix):
         self.label_enc = NDE(labels)
 
         # TODO generalize about axis, esp in the k loop of unique indices
-        axis=1
+        #axis = 1
 
-        assert(preds.shape[axis] == len(labels))
+        assert(preds.shape[1] == len(labels))
 
         n_classes = len(self.label_enc)
 
@@ -65,12 +65,12 @@ class OrderedConfusionTensor(ConfusionMatrix):
             assert(isinstance(top_k, int))
 
         # Get top-k predictions, assuming prediction
-        top_preds = np.argsort(preds, axis)[:, ::-1][:, :top_k]
+        top_preds = np.argsort(preds, axis=1)[:, ::-1][:, :top_k]
 
         # Cast both targets and preds to their args for a confusion matrix
         # based on label_enc
         if not targets_idx:
-            targets = self.label_enc.encode(targets)
+            targets = self.label_enc.encode(targets).reshape(targets.shape)
 
         # TODO decide if supporting weights is even necessary as this is counts
         #    if weights is not None:
@@ -102,11 +102,11 @@ class OrderedConfusionTensor(ConfusionMatrix):
         true_pos = self.tensor.diagonal(axis1=1, axis2=2).sum(0)
         non_diag = ma.masked_array(
             self.tensor,
-            mask=np.stack([np.eye(3, dtype=bool)),
+            mask=np.stack([np.eye(k, dtype=bool)] * k),
         )
         false_pos = non_diag.sum(1)
         false_neg = non_diag.sum(2)
-        true_positives
+        #true_positives
         return
 
     def accuracy(self, k=None):
