@@ -3,9 +3,11 @@ import logging
 
 from bidict import OrderedBidict, MutableBidict
 import numpy as np
+from sortedcollections import SortedDict, ValueSortedDict
+
+# TODO  rm scikit-learn dependency. Its unnecessary for the most part.
 from sklearn.utils import validation
 from sklearn.preprocessing import label_binarize
-from sortedcollections import SortedDict, ValueSortedDict
 
 # TODO add Torch version of this: support for doing this in Torch code only
 # TODO add Tensorflow version of this: support for doing this in TF code only
