@@ -21,8 +21,8 @@ def scatter_nd_numpy(indices, updates, shape, target=None):
 
 
 class OrderedConfusionTensor(object):
-    """A Tensor of KxCxC where K axisension represents the ordered confusion,
-    and max(K) == C with each individual CxC along the K axisenison is the
+    """A Tensor of KxCxC where K dimension represents the ordered confusion,
+    and max(K) == C with each individual CxC along the K dimenison is the
     ordered slice of the ordered predictions. Looking at one slice of the
     internal confusion tensor is NOT the top-k confusion matrix, but may be
     used to obtain the top-k measures.
@@ -60,7 +60,7 @@ class OrderedConfusionTensor(object):
         n_classes = len(self.label_enc)
 
         if top_k is None:
-            top_k = n_classes
+            top_k = 1
         else:
             assert(isinstance(top_k, int))
 
@@ -75,21 +75,13 @@ class OrderedConfusionTensor(object):
         # TODO decide if supporting weights is even necessary as this is counts
         #    if weights is not None:
         #        unique_idx_n *= weights
-
-        # TODO Repeat this top_k times
-        ordered_cms = np.zeros([top_k, n_classes, n_classes])
-        for k in range(top_k):
-            unique_idx, unique_idx_counts = np.unique(
-                np.stack([targets, top_preds[:, [k]]], axis=0),
-                return_counts=True,
-                axis=1,
-            )
-            np.add.at(
-                ordered_cms[k],
-                tuple(unique_idx.T.reshape(-1, unique_idx.T.shape[-1]).T),
-                unique_idx_counts.ravel(),
-            )
-        self.tensor = ordered_cms
+        self.tensor = get_cm_tensor(
+            targets,
+            top_preds,
+            top_k,
+            n_classes,
+            axis=0,
+        )
 
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.
