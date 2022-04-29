@@ -26,6 +26,11 @@ class OrderedConfusionTensor(object):
     ordered slice of the ordered predictions. Looking at one slice of the
     internal confusion tensor is NOT the top-k confusion matrix, but may be
     used to obtain the top-k measures.
+
+    Attributes
+    ----------
+    tensor : np.array
+    label_enc : NominalDataEncoder
     """
     def __init__(
         self,
@@ -82,6 +87,10 @@ class OrderedConfusionTensor(object):
             n_classes,
             axis=0,
         )
+
+    def __add__(self, other):
+        """Necessary for checking the changes over increments."""
+        raise NotImplementedError()
 
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.

@@ -109,6 +109,7 @@ class ConfusionMatrix(object):
             raise NotImplementedError('Same labels of different order.')
 
         return self.mat + other.mat
+        # TODO return a ConfusionMatrix return self.mat + other.mat
 
     def reduce(self, labels, reduced_label, inverse=False):
         """Reduce confusion matrix to smaller size by mapping labels to one.
