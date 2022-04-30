@@ -486,7 +486,6 @@ class ConfusionMatrix(object):
     def save(
         self,
         filepath,
-        filetype='csv',
         conf_mat_key='confusion_matrix',
         overwrite=False,
         *args,
@@ -494,22 +493,36 @@ class ConfusionMatrix(object):
     ):
         """Saves the current confusion matrix to the given filepath."""
         if not isinstance(filetype, str):
+            raise NotImplementedError(
+                'Only str filepaths are supported for saving.',
+            )
+
+        ext = os.path.splitext(filepath)[-1]
+
+        if ext not in {'.csv', '.tsv', '.hdf5', '.h5'}:
             raise TypeError(' '.join([
-                'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                f'"h5"; not type `{type(filetype)}`',
+                'Expected file extention: ".csv", ".tsv", ".hdf5", or',
+                f'".h5"; not  `{ext}`',
             ]))
 
-        filetype = filetype.lower()
         filepath = create_filepath(filepath, overwrite=overwrite)
 
-        if filetype == 'csv' or filetype == 'tsv':
+        if ext == '.csv':
             pd.DataFrame(self.mat, columns=self.labels).to_csv(
                 filepath,
                 index=False,
                 *args,
                 **kwargs,
             )
-        else: #HDF5
+        elif ext == '.tsv':
+            pd.DataFrame(self.mat, columns=self.labels).to_csv(
+                filepath,
+                index=False,
+                sep='\t',
+                *args,
+                **kwargs,
+            )
+        else: # HDF5 elif ext in {'.hdf5', '.h5'}:
             with h5py.File(filepath, 'r') as h5f:
                 h5f['labels'] = self.labels.astype(np.string_)
                 h5f[conf_mat_key] = self.mat
