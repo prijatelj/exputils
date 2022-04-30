@@ -308,12 +308,12 @@ class NominalDataEncoder(object):
         if keys.dtype == object:
             # Python encode
 
-            return np.array([self.encoder[key] for key in keys])
+            return np.array([self.encoder[key] for key in keys]).reshape(keys)
 
         # Numpy encode
         if self.keys_sorted:
             # Encoder keys are already sorted within the encoder.
-            return np.searchsorted(self.encoder, keys)
+            return np.searchsorted(self.encoder, keys) # TODO reshape?
 
         return self.argsorted_keys[np.searchsorted(
             self.encoder,
