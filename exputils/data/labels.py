@@ -313,7 +313,7 @@ class NominalDataEncoder(object):
         # Numpy encode
         if self.keys_sorted:
             # Encoder keys are already sorted within the encoder.
-            return np.searchsorted(self.encoder, keys) # TODO reshape?
+            return np.searchsorted(self.encoder, keys)
 
         return self.argsorted_keys[np.searchsorted(
             self.encoder,
