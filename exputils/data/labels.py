@@ -285,7 +285,7 @@ class NominalDataEncoder(object):
 
         # TODO add support for encoding an ndarray of any shape
 
-        keys = validation.column_or_1d(keys, warn=True)
+        #keys = validation.column_or_1d(keys, warn=True)
 
         if validation._num_samples(keys) == 0:
             return np.array([])
