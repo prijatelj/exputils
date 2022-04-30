@@ -22,9 +22,10 @@ def scatter_nd_numpy(indices, updates, shape, target=None):
 
 class OrderedConfusionTensor(object):
     """A Tensor of KxCxC where K dimension represents the ordered confusion,
-    and max(K) == C with each individual CxC along the K dimenison is the
-    ordered slice of the ordered predictions. Looking at one slice of the
-    internal confusion tensor is NOT the top-k confusion matrix, but may be
+    and max(K) == C with each individual CxC matrix along the K dimenison is
+    the ordered slice of the ordered predictions. Looking at one slice of the
+    internal confusion tensor is NOT the top-k confusion matrix, but rather the
+    confusion matrix when looking at n-th highest probable class. This may be
     used to obtain the top-k measures.
 
     Attributes
@@ -54,7 +55,7 @@ class OrderedConfusionTensor(object):
         labels : = None
         top_k : = None
         """
-        # NominalDataEncoder of labels
+        # NominalDataEncoder of labels to track symbol to the index
         self.label_enc = NDE(labels)
 
         # TODO generalize about axis, esp in the k loop of unique indices
