@@ -1,4 +1,5 @@
 """Useful label management classes and functions."""
+from itertools import islice
 import logging
 
 from bidict import OrderedBidict, MutableBidict
@@ -107,13 +108,27 @@ class NominalDataEncoder(object):
     encoder : OrderedBidict
         The bidirectional mapping of nominal value to integer encoding. There
         can be no multiple keyes that map to the same values.
-    argsorted_keys : np.ndarray(int)
+    argsorted_keys : np.ndarray(int) = None
         When the keys in the encoder are not sorted, but instead saved in the
-        order they are given, then sorted_keys_args is an array of the indices
+        order they are given, then argsorted_keys is an array of the indices
         of the encoder keys in sorted order. This is necessary for encoding
         using numpy only when the keys are not sorted when saved into the
         encoder. If the keys are sorted when the encoder is created, then this
         is None.
+    pos_label : int = 1
+        The positive label to use when binarizing or one hot encoding.
+    neg_label : int = 0
+        The negative label to use when binarizing or one hot encoding.
+    sparse_output : bool = False
+        ??? same as scikit LabelBinarizer learn atm.
+    unknown_key : str = None
+        The key used for an unknown label, especially in encoding of unknown
+        or other labels not contained within the encoder. When this is None,
+        the default, no handling of unknowns is supported by this encoder.
+
+        This class is different from the others in that nominal values
+        encountered in encoding that are not in the set of known labels will be
+        treated as this unknown label.
 
     Notes
     -----
@@ -124,17 +139,6 @@ class NominalDataEncoder(object):
         sklearn's encoders, but Bidict was used instead along with sklearn
         functions.
     """
-    # TODO perhaps inherit from sklear...LabelEncoder, given using its code.
-    #   The idea was to extend OrderedBidict to do efficient numpy
-    #   transformations similar to how sklearn...LabelEncoder does, and to also
-    #   organize the locality of labels, their encodings, and functions for
-    #   transforming data to and from the label encodings.
-    #
-    #   Furthermore, this is to aide in working with labels in general, esp. in
-    #   the case of complex label relationships and updating and changing
-    #   labels at certain levels of class hierarchy. So TODO: add ease of
-    #   combining NominalDataEncoders together, and this is where shift then
-    #   would come into play.
     def __init__(
         self,
         ordered_keys,
@@ -144,27 +148,36 @@ class NominalDataEncoder(object):
         sparse_output=False,
         ignore_dups=False,
         sort_keys=False,
-        #unknown=None,
-        #unknown_idx=None,
-        #unknown_key='unknown_default',
+        unknown_key=None,
+        unknown_idx=None,
     ):
         """
         Parameters
         ----------
         ordered_keys : Iterable
             The keys to be added to the
-        shift : int, optional
+        shift : int = 0
             Shifts the encoding by the given value. Can be seen as the starting
             value of the ordered encodings.
-        pos_label : int
-            The positive label to use when binarizing or one hot encoding.
-        neg_label : in
+        pos_label : see self
+        neg_label : see self
             The negative label to use when binarizing or one hot encoding.
-        sparse_output : bool
-            ??? same as scikit LabelBinarizer learn atm.
+        sparse_output : see self
         ignore_dups : bool, optional
             Ignores any duplicates in the given ordered keys. Not implemented!
         sort_keys : bool, optional
+        unknown_key : see self
+        unknown_idx : int = None
+            The index encoding for the unknown catch-all class, which is only
+            used when `unknown_key` is not None. When not given, this defaults
+            to shift, which defaults to 0.
+
+            If storing the unknown key within the encoder, we recommend having
+            unknown_idx = 0 when used to be represented as some other or
+            unknown class that is not captured by the rest of the classes,
+            especially when new known classes may be added to the encoder, as
+            this keeps unknown consistently at the same indedx, regardless of
+            prior or future known classes.
         """
         if not ignore_dups and len(set(ordered_keys)) != len(ordered_keys):
             raise ValueError('There are duplicates in the given sequence')
@@ -201,52 +214,110 @@ class NominalDataEncoder(object):
         self.neg_label = neg_label
         self.sparse_output = sparse_output
 
-        # TODO need to flesh out the handling of unknowns in the enecoder
-        """
-        if unknown == 'update':
-            self.unknown_idx = unknown_idx
-            # TODO further functionality required in [en/de]code to handle this
-            # TODO is there a default unknown or no?
-            self.unknown_key = unknown_key
-        elif unknown == 'single':
-            self.unknown_idx = unknown_idx
-            self.unknown_key = unknown_key
-            # TODO further functionality required in [en/de]code to handle this
-            # TODO optionally separate unknowns from the encoding, esp. in
-            # one_hots
-        elif unknown is not None:
-            raise ValueError(' '.join([
-                'Expected `unknown` to be `None`, "update", or "single", but',
-                f'"recieved": {unknown}',
+        # Handle all unknown key internal state and checks
+        self._unknown_key = unknown_key
+        if unknown_key is not None:
+            raise NotImplementedError(' '.join([
+                'init setup, but encode needs checked for non object dtypes!',
+                'The python encode object dtype works cuz of dict get default',
+                'If ints or floats, the unknowns will not default to unknown',
             ]))
-        else:
-            self.unknown_idx = None
-        self.unknown = unknown
-        #"""
+            if unknown_key in self.encoder:
+                if unknown_idx is not None:
+                    # Check if the unknown index is correct
+                    if unknown_idx != self.unknown_key:
+                        raise ValueError(' '.join([
+                            '`unknown_key` in ordered_keys but `unknown idx`',
+                            'given a different index than expected:',
+                            f'`unknown_idx` is {unknown_idx}, but expected',
+                            f'{self.unknown_key} based on ordered keys.',
+                        ]))
+            elif unknown_idx in {None, shift}:
+                self.shift_encoding(1)
+                tmp = OrderedBidict({unknown_key: shift})
+                tmp.update(self.encoder)
+                self.encoder = tmp
 
-    # TODO make it such that the NDE object may be treated as a numpy array for
-    # convenience in use.
+               # if self.argsorted_keys:
+               #     # TODO unit test to ensure this works. Also may always be
+               #     # necessary w/ unsorted unknown_key
+               #     self.argsorted_keys = np.append(0, self.argsorted_keys + 1)
+            elif unknown_idx == len(self.encoder) + shift:
+                self.append(unknown_key)
+                # TODO unit test to ensure append handles unknown correctly!
+            elif (
+                isinstance(unknown_idx, int)
+                and unknown_idx >= shift
+                and unknown_idx <= shift + len(self.encoder)
+            ):
+                first_half = OrderedBidict(
+                    islice(self.encoder.items(), unknown_idx - shift)
+                )
+                first_half.update(OrderedBidict({unknown_key: unknown_idx}))
+                first_half.update(OrderedBidict({
+                    k : v + 1 for k, v in
+                    islice(self.encoder.items(), unknown_idx - shift, None)
+                }))
+                self.encoder = first_half
+
+            else:
+                raise TypeError(' '.join([
+                    '`unknown_idx` is not None or an int within',
+                    '[shift, shift + len(self.encoder)]!',
+                ]))
+
+            if self.argsorted_keys:
+                # Must update the argsorted_keys for approriate encoding
+                # TODO replace this hotfix cuz this is inefficient!
+                #self.argsorted_keys = np.argsort(self.encoder)
+                unique, self.argsorted_keys = np.unique(
+                    self.encoder,
+                    return_index=True,
+                )
+
     def __len__(self):
         return len(self.encoder)
 
-    # TODO __next__(self): iterable over keys or OrderedBidict obj
+    def __contains__(self, obj):
+        return obj in self.encoder
 
-    # TODO make self.inv a convenience to treat the inverse dict the same way
-    # as above, as a numpy 1d array.
+    def __iter__(self):
+        return iter(self.encoder)
+
+    def __copy__(self):
+        return NominalDataEncoder(
+            self.encoder.copy(),
+            pos_label=self.pos_label,
+            neg_label=self.neg_label,
+            sparse_output=self.sparse_output,
+        )
+
+    def __getitem__(self, key):
+        return self.encoder[key]
+
+    def __deepcopy__(self, memo):
+        raise NotImplementedError('__deepcopy__ of NominalDataEncoder')
 
     @property
-    def keys_sorted(self):
+    def inv(self):
+        return self.encoder.inverse
+
+    @property
+    def inverse(self):
+        return self.encoder.inverse
+
+    @property
+    def are_keys_sorted(self):
+        """Returns Boolean of if the keys are sorted within this encoder."""
         return isinstance(self.encoder, KeySortedBidict)
 
-    #@property
-    #def unknown_key(self):
-    #    if self.unknown is None:
-    #        raise ValueError('`unknown` is None. No unknown key or encoding!')
-    #    elif self.unknown_idx is None:
-    #        raise ValueError(
-    #            '`unknown_idx` is None. No default unknown key or encoding!'
-    #        )
-    #    return self.encoder.inverse[self.unknown_idx]
+    @property
+    def unknown_key(self):
+        return self._unknown_key
+
+    @property
+    def unknown_idx(self):
+        return self.encoder[self._unknown_key]
 
     def keys(self, *args, **kwargs):
         return self.encoder.keys(*args, **kwargs)
@@ -257,13 +328,16 @@ class NominalDataEncoder(object):
     def items(self, *args, **kwargs):
         return self.encoder.items(*args, **kwargs)
 
+    def get(self, key, default=None):
+        return self.encoder.get(key, default)
+
     def encode(self, keys, one_hot=False):
         """Encodes the given values into their respective encodings.
 
         Parameters
         ----------
         keys : scalar or np.ndarray
-        one_hot : bool
+        one_hot : bool = False
             If True, then expects to encode the keys into their respective one
             hot vectors. Otherwise, expects to map elements to their respective
             encoding values.
@@ -273,6 +347,14 @@ class NominalDataEncoder(object):
         scalar or np.ndarray
             Same shape as input keys, but with elements changed to the proper
             encoding.
+
+        Notes
+        -----
+        TODO, may be beneficial to include a live updating behavior that when
+        an unknown token is encountered, rather than throwing an error if
+        unknown_key does not exist, or treating that token as the unknown key,
+        update the encoder to include this new token. Could be a bool param
+        `update` that defaults to False here.
         """
         if one_hot:
             return label_binarize(
@@ -282,11 +364,9 @@ class NominalDataEncoder(object):
                 neg_label=self.neg_label,
                 sparse_output=self.sparse_output,
             )
-
-        # TODO add support for encoding an ndarray of any shape
+        keys = np.array(keys)
 
         #keys = validation.column_or_1d(keys, warn=True)
-
         if validation._num_samples(keys) == 0:
             return np.array([])
 
@@ -294,27 +374,34 @@ class NominalDataEncoder(object):
         diff = set(np.unique(keys)) - set(self.encoder)
         if diff:
             #   unknowns=None
-            raise ValueError(f'`keys` contains previously unseen keys: {diff}')
-            # TODO allow for assigning a default encoding value if unknown
-            # label: i.e. not in the current encoder
-            #   unknowns=default; unknown_idx = 0
-            #   e.g. convert_to_unknown=True; OR unknown_key exists?
-            # basically set `unknown_behavior={'update', 'convert', 'error'}
+            if not self._unknown_key:
+                raise ValueError(
+                    f'`keys` contains previously unseen keys: {diff}',
+                )
+            else:
+                raise NotImplementedError(' '.join([
+                    f'`keys` contains previously unseen keys: {diff}',
+                    'and unknown_key is provided, but not implremented yet!',
+                ]))
 
             # TODO XOR allow for updating of the labels in order of occurrence.
             # XOR default is as is, fail if unseen label in encoding.
-            #   unknowns=update
+            #   unknowns = update
+            # if update: ...
 
         if keys.dtype == object:
             # Python encode
-
-            return np.array([self.encoder[key] for key in keys]).reshape(keys)
+            return np.array([
+                self.encoder.get(key, self.unknown_idx) for key in keys
+            ]).reshape(keys)
 
         # Numpy encode
-        if self.keys_sorted:
+        if self.are_keys_sorted:
             # Encoder keys are already sorted within the encoder.
+            # TODO handle masking all unknowns to unknown! Perhaps masked array?
             return np.searchsorted(self.encoder, keys)
 
+        # TODO handle masking all unknowns to unknown! Perhaps masked array?
         return self.argsorted_keys[np.searchsorted(
             self.encoder,
             keys,
@@ -351,7 +438,7 @@ class NominalDataEncoder(object):
 
         # TODO add support for decoding an ndarray of any shape
 
-        encodings = validation.column_or_1d(encodings, warn=True)
+        #encodings = validation.column_or_1d(encodings, warn=True)
         # inverse transform of empty array is empty array
         if validation._num_samples(encodings) == 0:
             return np.array([])
@@ -359,7 +446,7 @@ class NominalDataEncoder(object):
         diff = np.setdiff1d(encodings, np.arange(len(self.keys())))
         if len(diff):
             raise ValueError(
-                "encodings contains previously unseen labels: %s" % str(diff)
+                f'encodings contains previously unseen labels: {diff}'
             )
             # TODO hard to handle unknowns in the decoding case, but could do
             # update or default as well, I suppose.
@@ -377,7 +464,7 @@ class NominalDataEncoder(object):
         if not isinstance(shift, int):
             raise TypeError(' '.join([
                 'Expected `adjustment` to be type `int`, not',
-                'f`{type(adjustment)}`',
+                f'`{type(shift)}`',
             ]))
 
         # NOTE uncertain when shift comes into play outside of maintence or
@@ -387,7 +474,7 @@ class NominalDataEncoder(object):
             logging.debug('Shift value given was zero. No shifting done.')
             return
 
-        for key in self.encoder:
+        for key in reversed(self.encoder):
             self.encoder[key] += shift
 
     def append(self, keys, ignore_dups=False):
@@ -408,11 +495,15 @@ class NominalDataEncoder(object):
                     last_enc += 1
                     self.encoder[key] = last_enc
 
-                    if not self.keys_sorted:
+                    if not self.are_keys_sorted:
                         # Must update the argsorted_keys for approriate
                         # encoding TODO replace this hotfix cuz this is
-                        # inefficient!
-                        self.argsorted_keys = np.argsort(self.encoder)
+                        # inefficient! # TODO unit test this!
+                        #self.argsorted_keys = np.argsort(self.encoder)
+                        unique, self.argsorted_keys = np.unique(
+                            self.encoder,
+                            return_index=True,
+                        )
 
                 elif ignore_dups:
                     continue
@@ -425,10 +516,15 @@ class NominalDataEncoder(object):
             if keys not in self.encoder:
                 self.encoder[keys] = last_enc + 1
 
-                if not self.keys_sorted:
+                if not self.are_keys_sorted:
                     # Must update the argsorted_keys for approriate encoding
                     # TODO replace this hotfix cuz this is inefficient!
-                    self.argsorted_keys = np.argsort(self.encoder)
+                    # TODO unit test this!
+                    #self.argsorted_keys = np.argsort(self.encoder)
+                    unique, self.argsorted_keys = np.unique(
+                        self.encoder,
+                        return_index=True,
+                    )
 
             elif ignore_dups:
                 return
@@ -458,12 +554,12 @@ class NominalDataEncoder(object):
         # TODO handle the update to argsorted_keys
 
         # Handle the shift in encoding if there is any.
-        shift = next(iter(self.encoder.inverse))
+        #shift = next(iter(self.encoder.inverse))
 
         # Obtain the last encoding
         last_enc = next(reversed(self.encoder.inverse))
 
-        if not self.keys_sorted:
+        if not self.are_keys_sorted:
             # Must remove the key's respective arg from argsorted_keys
             arg = np.argwhere(np.array(self.encoder) == (
                 self.encoder.inverse[key] if encoding else key
@@ -483,7 +579,7 @@ class NominalDataEncoder(object):
 
         if enc != last_enc:
             # Decrement all following keys by one
-            for k in list(self.encoder)[enc - shift:]:
+            for k in list(self.encoder)[enc:]:
                 self.encoder[k] -= 1
 
         return key if encoding else enc
