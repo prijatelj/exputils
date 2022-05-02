@@ -147,7 +147,7 @@ class OrderedConfusionMatrices(object):
     def save(
         self,
         filepath,
-        conf_mat_key='confusion_matrix',
+        conf_mat_key='ordered_confusion_matrices',
         overwrite=False,
         *args,
         **kwargs,
@@ -178,7 +178,7 @@ class OrderedConfusionMatrices(object):
         sep=',',
         filetype=None,
         names=None,
-        conf_mat_key='confusion_matrix',
+        conf_mat_key='ordered_confusion_matrices',
         *args,
         **kwargs,
     ):
