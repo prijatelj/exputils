@@ -217,11 +217,13 @@ class NominalDataEncoder(object):
         # Handle all unknown key internal state and checks
         self._unknown_key = unknown_key
         if unknown_key is not None:
+            """
             raise NotImplementedError(' '.join([
                 'init setup, but encode needs checked for non object dtypes!',
                 'The python encode object dtype works cuz of dict get default',
                 'If ints or floats, the unknowns will not default to unknown',
             ]))
+            #"""
             if unknown_key in self.encoder:
                 if unknown_idx is not None:
                     # Check if the unknown index is correct
@@ -238,7 +240,7 @@ class NominalDataEncoder(object):
                 tmp.update(self.encoder)
                 self.encoder = tmp
 
-               # if self.argsorted_keys:
+               # if self.argsorted_keys is not None:
                #     # TODO unit test to ensure this works. Also may always be
                #     # necessary w/ unsorted unknown_key
                #     self.argsorted_keys = np.append(0, self.argsorted_keys + 1)
@@ -266,7 +268,7 @@ class NominalDataEncoder(object):
                     '[shift, shift + len(self.encoder)]!',
                 ]))
 
-            if self.argsorted_keys:
+            if self.argsorted_keys is not None:
                 # Must update the argsorted_keys for approriate encoding
                 # TODO replace this hotfix cuz this is inefficient!
                 #self.argsorted_keys = np.argsort(self.encoder)
