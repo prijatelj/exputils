@@ -125,7 +125,7 @@ class OrderedConfusionMatrices(object):
         false_pos = non_diag.sum(1)
         false_neg = non_diag.sum(2)
         #true_positives
-        return
+        return np.hstack((true_pos, false_pos, false_neg))
 
     def accuracy(self, k=None):
         """Top-k accuracy. K is maxed by default if not given. k inclusive"""
@@ -186,6 +186,8 @@ class OrderedConfusionMatrices(object):
         filepath in given common formats. Loading from CSV relies on
         pandas.read_csv(*args, **kwargs).
         """
+        raise NotImplementedError()
+
         if filetype is None:
             # Infer filetype from filepath if filetype is not given
             parts = filepath.rpartition('.')
@@ -264,7 +266,6 @@ class OrderedConfusionMatrices(object):
                 loaded_conf_mat = h5f[conf_mat_key][:]
 
         return ConfusionMatrix(loaded_conf_mat, labels=labels)
-
 
 
 def get_cm_tensor(targets, top_preds, top_k, n_classes, axis=0):
