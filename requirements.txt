@@ -1,4 +1,4 @@
-bidict
+bidict>=0.22.0
 h5py
 packaging
 pandas
