@@ -1,10 +1,13 @@
 """Ordered confusion matricies for calculating top-k measures."""
+import logging
 import os
 
+import h5py
 import numpy as np
 ma = np.ma
 
 from exputils.data.labels import NominalDataEncoder as NDE
+from exputils.io import create_filepath
 
 
 def scatter_nd_numpy(indices, updates, shape, target=None):
@@ -153,7 +156,7 @@ class OrderedConfusionMatrices(object):
         **kwargs,
     ):
         """Saves the current confusion matrix to the given filepath."""
-        if not isinstance(filetype, str):
+        if not isinstance(filepath, str):
             raise NotImplementedError(
                 'Only str filepaths are supported for saving.',
             )
@@ -167,8 +170,8 @@ class OrderedConfusionMatrices(object):
 
         filepath = create_filepath(filepath, overwrite=overwrite)
 
-        with h5py.File(filepath, 'r') as h5f:
-            h5f['labels'] = self.labels.astype(np.string_)
+        with h5py.File(filepath, 'w') as h5f:
+            h5f['labels'] = np.array(self.label_enc).astype(np.string_)
             h5f[conf_mat_key] = self.tensor
 
     @staticmethod
