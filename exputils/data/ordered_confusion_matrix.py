@@ -51,8 +51,8 @@ class OrderedConfusionMatrices(object):
     def __init__(
         self,
         targets,
-        preds,
-        labels,
+        preds=None,
+        labels=None,
         top_k=None,
         #axis=1,
         sort_labels=False,
@@ -74,39 +74,64 @@ class OrderedConfusionMatrices(object):
             The calculation of the top k-th confusion matrix is dependent upon
             the use of integer index encoding representaiton of the symbols.
         """
-        # NominalDataEncoder of labels to track symbol to the index
-        self.label_enc = NDE(labels)
-
         # TODO generalize about axis, esp in the k loop of unique indices
         #axis = 1
 
-        assert(preds.shape[1] == len(labels))
+        # NominalDataEncoder of labels to track symbol to the index
+        if preds is None:
+            if (
+                isinstance(targets, np.ndarray)
+                and len(targets.shape) == 3
+                and targets.shape[1] == targets.shape[2]
+            ):
+                self.tensor = targets
+                if top_k is None:
+                    self.top_k = targets.shape[0]
+                else:
+                    raise ValueError(
+                        'top_k given when targets is the ordered confusoin '
+                        'matrices.'
+                    )
 
-        n_classes = len(self.label_enc)
-
-        if top_k is None:
-            top_k = 1
+                if labels is None:
+                    raise ValueError(
+                        'OrderedConfusionMatrices without labels!'
+                    )
+                else:
+                    self.label_enc = NDE(labels)
         else:
-            assert(isinstance(top_k, int))
+            assert(preds.shape[1] == len(labels))
 
-        # Get top-k predictions, assuming prediction
-        top_preds = np.argsort(preds, axis=1)[:, ::-1][:, :top_k]
+            if top_k is None:
+                top_k = 1
+            else:
+                assert(isinstance(top_k, int))
 
-        # Cast both targets and preds to their args for a confusion matrix
-        # based on label_enc
-        if not targets_idx:
-            targets = self.label_enc.encode(targets)
+            if labels is None:
+                self.labels = NDE(list(set(targets) | set(preds)))
+            else:
+                self.label_enc = NDE(labels)
 
-        # TODO decide if supporting weights is even necessary as this is counts
-        #    if weights is not None:
-        #        unique_idx_n *= weights
-        self.tensor = get_cm_tensor(
-            targets,
-            top_preds,
-            top_k,
-            n_classes,
-            axis=0,
-        )
+            n_classes = len(self.label_enc)
+
+            # Get top-k predictions, assuming prediction
+            top_preds = np.argsort(preds, axis=1)[:, ::-1][:, :top_k]
+
+            # Cast both targets and preds to their args for a confusion matrix
+            # based on label_enc
+            if not targets_idx:
+                targets = self.label_enc.encode(targets)
+
+            # TODO decide if supporting weights is even necessary as this is counts
+            #    if weights is not None:
+            #        unique_idx_n *= weights
+            self.tensor = get_cm_tensor(
+                targets,
+                top_preds,
+                top_k,
+                n_classes,
+                axis=0,
+            )
 
     def __add__(self, other):
         """Necessary for checking the changes over increments."""
@@ -176,99 +201,35 @@ class OrderedConfusionMatrices(object):
 
     @staticmethod
     def load(
-        self,
         filepath,
-        sep=',',
-        filetype=None,
-        names=None,
+        labels=None,
         conf_mat_key='ordered_confusion_matrices',
-        *args,
-        **kwargs,
     ):
         """Convenience function that loads the confusion matrix from the given
         filepath in given common formats. Loading from CSV relies on
         pandas.read_csv(*args, **kwargs).
         """
-        raise NotImplementedError()
+        ext = os.path.splitext(filepath)[-1]
 
-        if filetype is None:
-            # Infer filetype from filepath if filetype is not given
-            parts = filepath.rpartition('.')
-
-            if not parts[0]:
-                raise ValueError(' '.join([
-                    'filetype is `None` and no file extention present in',
-                    'given filepath.',
-                ]))
-
-            if parts[2] and os.path.sep in parts[2]:
-                raise ValueError(' '.join([
-                    'filetype is `None` and no file extention present in',
-                    'given filepath.',
-                ]))
-
-            filetype = parts[2].lower()
-            if filetype == 'csv':
-                sep = ','
-                #filetype = 'csv'
-            elif filetype == 'tsv':
-                sep = '\t'
-                #filetype = 'tsv'
-            elif filetype == 'hdf5' or filetype == 'h5':
-                filetype = 'hdf5'
-            else:
-                raise ValueError(' '.join([
-                    'filetype is `None` and file extention present in',
-                    'given filepath is not "csv", "tsv", "hdf5", or "h5".',
-                ]))
-        elif isinstance(filetype, str):
-            # lowercase filetype and check if an expected extension
-            filetype = filetype.lower()
-            if filetype not in {'csv', 'tsv', 'hdf5', 'h5'}:
-                raise TypeError(' '.join([
-                    'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                    f'"h5", not `{filetype}`',
-                ]))
-        else:
-            raise TypeError(' '.join([
-                'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                f'"h5", not of type `{type(filetype)}`',
-            ]))
-
-        if filepath == 'csv' or 'tsv':
-            loaded_conf_mat = pd.read_csv(
-                filepath,
-                sep=sep,
-                names=names,
-                *args,
-                **kwargs,
+        if ext not in {'.hdf5', '.h5'}:
+            raise TypeError(
+                f'Expected file extention: ".hdf5", or ".h5"; not `{ext}`',
             )
 
-            assert (
-                len(loaded_conf_mat.shape) == 2
-                and loaded_conf_mat.shape[0] == loaded_conf_mat.shape[1]
-            )
+        with h5py.File(filepath, 'r') as h5f:
+            if 'labels' in h5f.keys():
+                if labels is not None:
+                    logging.warning(' '.join([
+                        '`names` is provided while "labels" exists in the',
+                        'hdf5 file! `names` is prioritized of the labels',
+                        'in hdf5 file.',
+                    ]))
+                else:
+                    labels = h5f['labels'][:]
 
-            if names is None:
-                labels = np.array(loaded_conf_mat.columns)
-            else:
-                labels = None
-        else:  # HDF5
-            with h5py.File(filepath, 'r') as h5f:
-                if 'labels' in h5f.keys():
-                    if names is not None:
-                        logging.warning(' '.join([
-                            '`names` is provided while "labels" exists in the',
-                            'hdf5 file! `names` is prioritized of the labels',
-                            'in hdf5 file.',
-                        ]))
-                        labels = names
-                    else:
-                        labels = h5f['labels'][:]
+            loaded_conf_mat = h5f[conf_mat_key][:]
 
-                loaded_conf_mat = h5f[conf_mat_key][:]
-
-        return ConfusionMatrix(loaded_conf_mat, labels=labels)
+        return OrderedConfusionMatrices(loaded_conf_mat, labels=labels)
 
 
 def get_cm_tensor(targets, top_preds, top_k, n_classes, axis=0):
