@@ -3,6 +3,7 @@ calculated and certain metrics need calculated FROM the confusion matrix, add
 __tested__ metrics derived from the confusion matrix for efficient
 computation.
 """
+from copy import copy
 import logging
 import os
 
@@ -14,6 +15,7 @@ from scipy.stats import gmean, entropy
 from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
+from exputils.data.labels import NominalDataEncoder as NDE
 
 # TODO ConfusionTensor: generalize confusion matrix to multiple discrete RVs
 # with a ConfusionTensor class, which would be the parent to ConfusionMatrix
@@ -56,14 +58,13 @@ class ConfusionMatrix(object):
                 # If given an existing matrix as a confusion matrix
                 self.mat = np.array(targets)
 
-                if isinstance(labels, list):
+                if isinstance(targets, pd.DataFrame):
+                    self.labels = NDE(targets.columns)
+                elif isinstance(labels, (list, np.ndarray)):
                     self.labels = np.array(labels)
-                elif isinstance(labels, np.ndarray):
-                    self.labels = labels
-                elif isinstance(targets, pd.DataFrame):
-                    self.labels = np.array(targets.columns)
+                    #self.labels = NDE(labels)
                 else:
-                    self.labels = np.arange(len(self.mat))
+                    self.labels = NDE(np.arange(len(self.mat)))
             else:
                 raise TypeError(' '.join([
                     'targets type is expected to be of type `np.ndarray`, but',
@@ -71,17 +72,17 @@ class ConfusionMatrix(object):
                 ]))
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
-            if isinstance(labels, list):
+            if isinstance(labels, (list, np.array)):
                 self.labels = np.array(labels)
-            elif isinstance(labels, np.ndarray):
-                self.labels = labels
+                #self.labels = NDE(labels)
             else:
                 self.labels = np.array(list(set(targets) | set(preds)))
+                #self.labels = NDE(list(set(targets) | set(preds)))
 
             self.mat = confusion_matrix(
                 targets,
                 preds,
-                labels=self.labels,
+                labels=np.array(self.labels),
                 *args,
                 **kwargs,
             )
@@ -110,7 +111,7 @@ class ConfusionMatrix(object):
 
         return ConfusionMatrix(
             self.mat + other.mat,
-            labels=self.labels,
+            labels=copy(self.labels),
         )
 
     def reduce(self, labels, reduced_label, inverse=False):
@@ -292,13 +293,15 @@ class ConfusionMatrix(object):
 
         # TODO be aware that NaNs occur at times, and the below may need a
         # nonzero mask like mutual information did!
-
+        denominator = (
+            np.sqrt(total_sqrd - np.dot(predicted, predicted))
+            * np.sqrt(total_sqrd - np.dot(actual, actual))
+        )
+        if denominator == 0:
+            return 0
         return (
             (correct_pred * self.mat.sum() - np.dot(actual, predicted)) /
-            (
-                np.sqrt(total_sqrd - np.dot(predicted, predicted))
-                * np.sqrt(total_sqrd - np.dot(actual, actual))
-            )
+            denominator
         )
 
     def mutual_information(self, normalized=None, weights=None, base=None):

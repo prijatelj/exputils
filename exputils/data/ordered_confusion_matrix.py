@@ -7,6 +7,7 @@ import numpy as np
 ma = np.ma
 
 from exputils.data.labels import NominalDataEncoder as NDE
+from exputils.data import ConfusionMatrix
 from exputils.io import create_filepath
 
 
@@ -137,6 +138,10 @@ class OrderedConfusionMatrices(object):
         """Necessary for checking the changes over increments."""
         raise NotImplementedError()
 
+    def get_conf_mat(self):
+        """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
+        return ConfusionMatrix(self.tensor[0], labels=np.array(self.label_enc))
+
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.
     def get_per_class_binary_top(self, k, axis1=1, axis2=2):
@@ -157,10 +162,11 @@ class OrderedConfusionMatrices(object):
 
     def accuracy(self, k=None):
         """Top-k accuracy. K is maxed by default if not given. k inclusive"""
+        # TODO unit test this.
         assert(k is None or isinstance(k, int))
         if k is None or k == 1:
             return (
-                self.tensor.diagonal(axis1=1, axis2=2).sum()
+                self.tensor[0].diagonal().sum()
                 / self.tensor[0].sum()
             )
         elif k < 1:
@@ -225,7 +231,7 @@ class OrderedConfusionMatrices(object):
                         'in hdf5 file.',
                     ]))
                 else:
-                    labels = h5f['labels'][:]
+                    labels = [label.decode() for label in h5f['labels'][:]]
 
             loaded_conf_mat = h5f[conf_mat_key][:]
 
