@@ -72,7 +72,7 @@ class ConfusionMatrix(object):
                 ]))
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
-            if isinstance(labels, (list, np.array)):
+            if isinstance(labels, (list, np.ndarray)):
                 self.labels = np.array(labels)
                 #self.labels = NDE(labels)
             else:
@@ -100,8 +100,8 @@ class ConfusionMatrix(object):
                 'The two ConfusionMatrices do not have the same number of',
                 'labels!',
             ]))
-        if not self.labels == other.labels:
-            if not set(self.labels) == set(other.labels):
+        if all(self.labels != other.labels):
+            if set(self.labels) != set(other.labels):
                 raise ValueError(
                     'The other ConfusionMatrix does not have the same labels!'
                 )
