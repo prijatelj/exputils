@@ -108,7 +108,8 @@ class NominalDataEncoder(object):
     encoder : OrderedBidict
         The bidirectional mapping of nominal value to integer encoding. There
         can be no multiple keyes that map to the same values.
-    argsorted_keys : np.ndarray(int) = None
+    argsorted_keys : list = None
+        np.ndarray(int) = None
         When the keys in the encoder are not sorted, but instead saved in the
         order they are given, then argsorted_keys is an array of the indices
         of the encoder keys in sorted order. This is necessary for encoding
@@ -154,8 +155,9 @@ class NominalDataEncoder(object):
         """
         Parameters
         ----------
-        ordered_keys : Iterable
-            The keys to be added to the
+        ordered_keys : str
+            any Iterable
+            The keys to be added to the encoder.
         shift : int = 0
             Shifts the encoding by the given value. Can be seen as the starting
             value of the ordered encodings.
@@ -163,9 +165,9 @@ class NominalDataEncoder(object):
         neg_label : see self
             The negative label to use when binarizing or one hot encoding.
         sparse_output : see self
-        ignore_dups : bool, optional
+        ignore_dups : bool = False
             Ignores any duplicates in the given ordered keys. Not implemented!
-        sort_keys : bool, optional
+        sort_keys : bool = False
         unknown_key : see self
         unknown_idx : int = None
             The index encoding for the unknown catch-all class, which is only
@@ -319,7 +321,7 @@ class NominalDataEncoder(object):
 
     @property
     def unknown_idx(self):
-        return self.encoder[self._unknown_key]
+        return self.encoder.get(self._unknown_key, None)
 
     def keys(self, *args, **kwargs):
         return self.encoder.keys(*args, **kwargs)
@@ -608,6 +610,11 @@ class NominalDataEncoder(object):
     def load(filepath, sep=None, *args, **kwargs):
         """Loads the ordered list from the file. Defaults to expect a text file
         where each line contains a single nominal label.
+
+        Args
+        ----
+        filepath : str
+        sep : str = None
         """
         return load_label_set(filepath, sep, *args, **kwargs)
 
