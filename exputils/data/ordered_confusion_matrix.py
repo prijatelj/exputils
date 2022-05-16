@@ -101,7 +101,7 @@ class OrderedConfusionMatrices(object):
                 else:
                     self.label_enc = NDE(labels)
         else:
-            assert(preds.shape[1] == len(labels))
+            assert(preds.shape[1] == len(targets))
 
             if top_k is None:
                 top_k = 1
