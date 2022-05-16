@@ -497,11 +497,6 @@ class ConfusionMatrix(object):
         **kwargs,
     ):
         """Saves the current confusion matrix to the given filepath."""
-        if not isinstance(filetype, str):
-            raise NotImplementedError(
-                'Only str filepaths are supported for saving.',
-            )
-
         ext = os.path.splitext(filepath)[-1]
 
         if ext not in {'.csv', '.tsv', '.hdf5', '.h5'}:
