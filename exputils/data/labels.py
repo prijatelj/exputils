@@ -294,6 +294,8 @@ class NominalDataEncoder(object):
             pos_label=self.pos_label,
             neg_label=self.neg_label,
             sparse_output=self.sparse_output,
+            unknown_key=self.unknown_key,
+            unknown_idx=self.unknown_idx,
         )
 
     def __getitem__(self, key):
@@ -554,6 +556,9 @@ class NominalDataEncoder(object):
         # shifting the array and index mapping done automatically... but then
         # again, iirc, the index mapping runs into a similar issue wrt to
         # getting the index of the keys.
+
+        if key == self.unknown_key:
+            self._unknown_key = None
 
         # TODO handle the update to argsorted_keys
 
