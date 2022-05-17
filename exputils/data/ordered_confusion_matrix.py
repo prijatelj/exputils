@@ -101,19 +101,18 @@ class OrderedConfusionMatrices(object):
                 else:
                     self.label_enc = NDE(labels)
         else:
-            assert(preds.shape[1] == len(targets))
-
             if top_k is None:
                 top_k = 1
             else:
                 assert(isinstance(top_k, int))
 
             if labels is None:
-                self.labels = NDE(list(set(targets) | set(preds)))
+                self.label_enc = NDE(list(set(targets) | set(preds)))
             else:
                 self.label_enc = NDE(labels)
 
             n_classes = len(self.label_enc)
+            assert(preds.shape[1] == n_classes)
 
             # Get top-k predictions, assuming prediction
             top_preds = np.argsort(preds, axis=1)[:, ::-1][:, :top_k]
