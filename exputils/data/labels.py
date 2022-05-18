@@ -1,4 +1,5 @@
 """Useful label management classes and functions."""
+from copy import deepcopy
 from itertools import islice
 import logging
 
@@ -302,7 +303,23 @@ class NominalDataEncoder(object):
         return self.encoder[key]
 
     def __deepcopy__(self, memo):
-        raise NotImplementedError('__deepcopy__ of NominalDataEncoder')
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        """
+        return NominalDataEncoder(
+            deepcopy(self.encoder),
+            shift=next(iter(self.inv)),
+            pos_label=self.pos_label,
+            neg_label=self.neg_label,
+            sparse_output=self.sparse_output,
+            sort_keys=False,
+            unknown_key=self.unknown_key,
+            unknown_idx=self.unknown_idx,
+        )
+        #"""
 
     @property
     def inv(self):
