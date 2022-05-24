@@ -1,5 +1,4 @@
 """Ordered confusion matricies for calculating top-k measures."""
-import logging
 import os
 
 import h5py
@@ -9,6 +8,9 @@ ma = np.ma
 from exputils.data.labels import NominalDataEncoder as NDE
 from exputils.data import ConfusionMatrix
 from exputils.io import create_filepath
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 def scatter_nd_numpy(indices, updates, shape, target=None):
@@ -224,11 +226,11 @@ class OrderedConfusionMatrices(object):
         with h5py.File(filepath, 'r') as h5f:
             if 'labels' in h5f.keys():
                 if labels is not None:
-                    logging.warning(' '.join([
-                        '`names` is provided while "labels" exists in the',
-                        'hdf5 file! `names` is prioritized of the labels',
-                        'in hdf5 file.',
-                    ]))
+                    logger.warning(
+                        '`names` is provided while "labels" exists in the '
+                        'hdf5 file! `names` is prioritized of the labels '
+                        'in hdf5 file.'
+                    )
                 else:
                     labels = [label.decode() for label in h5f['labels'][:]]
 

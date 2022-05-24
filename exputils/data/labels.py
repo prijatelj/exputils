@@ -1,7 +1,6 @@
 """Useful label management classes and functions."""
 from copy import deepcopy
 from itertools import islice
-import logging
 
 from bidict import OrderedBidict, MutableBidict
 import numpy as np
@@ -10,6 +9,10 @@ from sortedcollections import SortedDict, ValueSortedDict
 # TODO  rm scikit-learn dependency. Its unnecessary for the most part.
 from sklearn.utils import validation
 from sklearn.preprocessing import label_binarize
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 # TODO add Torch version of this: support for doing this in Torch code only
 # TODO add Tensorflow version of this: support for doing this in TF code only
@@ -494,7 +497,7 @@ class NominalDataEncoder(object):
         # when a enc value that is off from that of array indices applies.
 
         if shift == 0:
-            logging.debug('Shift value given was zero. No shifting done.')
+            logger.debug('Shift value given was zero. No shifting done.')
             return
 
         for key in reversed(self.encoder):
