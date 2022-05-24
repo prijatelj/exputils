@@ -280,14 +280,17 @@ class NominalDataEncoder(object):
                     return_index=True,
                 )
 
-    def __len__(self):
-        return len(self.encoder)
-
     def __contains__(self, obj):
         return obj in self.encoder
 
+    def __getitem__(self, key):
+        return self.encoder[key]
+
     def __iter__(self):
         return iter(self.encoder)
+
+    def __len__(self):
+        return len(self.encoder)
 
     def __copy__(self):
         return NominalDataEncoder(
@@ -298,9 +301,6 @@ class NominalDataEncoder(object):
             unknown_key=self.unknown_key,
             unknown_idx=self.unknown_idx,
         )
-
-    def __getitem__(self, key):
-        return self.encoder[key]
 
     def __deepcopy__(self, memo):
         cls = self.__class__
