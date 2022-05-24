@@ -504,8 +504,8 @@ class NominalDataEncoder(object):
             proper encoding.
         """
         if isinstance(one_hot_axis, int):
-            encodings = encodings.argmax(axis=one_hot_axis)
             # TODO check encodings.shape to expected shape
+            encodings = encodings.argmax(axis=one_hot_axis)
             if self.shift != 0:
                 encodings += self.shift
 
@@ -546,8 +546,12 @@ class NominalDataEncoder(object):
             logger.debug('Shift value given was zero. No shifting done.')
             return
 
-        for key in reversed(self.encoder):
-            self.encoder[key] += shift
+        if shift > 0:
+            for key in reversed(self.encoder):
+                self.encoder[key] += shift
+        else:
+            for key in self.encoder:
+                self.encoder[key] += shift
 
     def append(self, keys, ignore_dups=False):
         """Appends the keys to the end of the encoder giving them their

@@ -183,6 +183,7 @@ class TestLabelEncoder:
 
         # Check encoding of a list and tuple
         nde = NDE(example_labels, shift=shift)
+        assert nde.shift == shift
         assert (nde.encode(example_labels, one_hot) == ref_enc).all()
         assert (nde.encode(list(example_labels), one_hot) == ref_enc).all()
 
@@ -226,17 +227,20 @@ class TestLabelEncoder:
                 == ref_labels_x16.reshape(shape)
             ).all()
 
-    @pytest.mark.xfail
-    def test_shift(self, example_labels):
+    def test_shift_encoding(self, example_labels):
         nde = NDE(example_labels)
+        assert nde.shift == 0
 
         nde_shifted = NDE(example_labels, shift=20)
         assert nde_shifted.shift == 20
 
-        # TODO check check the
-        # TODO check shifted encodings and decoding.
+        nde.shift_encoding(20)
 
-        #assert False
+        assert nde == nde_shifted
+
+        nde = NDE(example_labels)
+        nde_shifted.shift_encoding(-20)
+        assert nde == nde_shifted
 
     @pytest.mark.xfail
     def test_pop(self, example_labels):
