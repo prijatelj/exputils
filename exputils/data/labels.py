@@ -4,7 +4,6 @@ from itertools import islice
 
 from bidict import OrderedBidict, MutableBidict
 import numpy as np
-from sortedcollections import SortedDict, ValueSortedDict
 
 # TODO  rm scikit-learn dependency. Its unnecessary for the most part.
 from sklearn.utils import validation
@@ -88,15 +87,17 @@ class BidirDict(dict):
 #   to to transform numpy arrays when given.
 
 
+"""
 class KeySortedBidict(MutableBidict):
-     __slots__ = ()
-     _fwdm_cls = SortedDict
-     _invm_cls = ValueSortedDict
-     _repr_delegate = list
+    __slots__ = ()
+    _fwdm_cls = SortedDict
+    _invm_cls = ValueSortedDict
+    _repr_delegate = list
 
-     # TODO the KeySortedBiDict's SortedDict and ValueSortedDict are not
-     # Reversible; unable to obtain reverse iterator via reversed(). This needs
-     # fixed. For now use OrderedBidict
+    # TODO the KeySortedBiDict's SortedDict and ValueSortedDict are not
+    # Reversible; unable to obtain reverse iterator via reversed(). This needs
+    # fixed. For now use OrderedBidict
+#"""
 
 
 class NominalDataEncoder(object):
@@ -290,14 +291,14 @@ class NominalDataEncoder(object):
                 'object of type `%s`. Performing surface level duck typing.',
                 type(other),
             )
-        for key in vars(self):
+        for key in self.__dict__:
             self_val = getattr(self, key)
             other_val = getattr(other, key)
             try:
                 if self_val != other_val:
                     return False
             except ValueError:
-                if (self_val != other_val).all():
+                if (self_val != other_val).any():
                     return False
         return (
             self.unknown_key == other.unknown_key
@@ -320,33 +321,18 @@ class NominalDataEncoder(object):
         return len(self.encoder)
 
     def __copy__(self):
-        return NominalDataEncoder(
-            self.encoder.copy(),
-            pos_label=self.pos_label,
-            neg_label=self.neg_label,
-            sparse_output=self.sparse_output,
-            unknown_key=self.unknown_key,
-            unknown_idx=self.unknown_idx,
-        )
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
 
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
-        for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
-        """
-        return NominalDataEncoder(
-            deepcopy(self.encoder),
-            shift=next(iter(self.inv)),
-            pos_label=self.pos_label,
-            neg_label=self.neg_label,
-            sparse_output=self.sparse_output,
-            sort_keys=False,
-            unknown_key=self.unknown_key,
-            unknown_idx=self.unknown_idx,
-        )
-        #"""
+        for key, val in self.__dict__.items():
+            setattr(result, key, deepcopy(val, memo))
+        return result
 
     @property
     def inv(self):

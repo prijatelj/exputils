@@ -5,7 +5,6 @@ pandas
 plotly
 numpy
 scikit-learn>=0.23
-sortedcollections
 
 # Adding simplified parsing wrapper of argparse, w/ nesting, inheritance, &
 # yaml configs. May just code this myself as what I want is minimal and mods
