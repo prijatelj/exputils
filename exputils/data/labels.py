@@ -283,6 +283,21 @@ class NominalDataEncoder(object):
                     return_index=True,
                 )
 
+    def __eq__(self, other):
+        if not isinstance(other, NominalDataEncoder):
+            raise TypeError(
+                'Unsupported comparison of NominalDataEncoder object to an '
+                f'object of type {type(other)}'
+            )
+        return (
+            self.encoder == other.encoder
+            and (self.argsorted_keys == other.argsorted_keys).all()
+            and self.pos_label == other.pos_label
+            and self.neg_label == other.neg_label
+            and self.sparse_output == other.sparse_output
+            and self.unknown_key == other.unknown_key
+        )
+
     def __contains__(self, obj):
         return obj in self.encoder
 
