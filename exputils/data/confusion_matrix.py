@@ -4,7 +4,6 @@ __tested__ metrics derived from the confusion matrix for efficient
 computation.
 """
 from copy import copy
-import logging
 import os
 
 import h5py
@@ -16,6 +15,9 @@ from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
 from exputils.data.labels import NominalDataEncoder as NDE
+
+import logging
+logger = logging.getLogger(__name__)
 
 # TODO ConfusionTensor: generalize confusion matrix to multiple discrete RVs
 # with a ConfusionTensor class, which would be the parent to ConfusionMatrix
@@ -264,10 +266,10 @@ class ConfusionMatrix(object):
         fn = self.false_negative(label)
         tn = self.mat.sum() - tp - fp - fn
 
-        logging.debug('tp = %f', tp)
-        logging.debug('tn = %f', tn)
-        logging.debug('fp = %f', fp)
-        logging.debug('fn = %f', fn)
+        logger.debug('tp = %f', tp)
+        logger.debug('tn = %f', tn)
+        logger.debug('fp = %f', fp)
+        logger.debug('fn = %f', fn)
 
         fpr = fp / (fp + tn)
         fnr = fn / (tp + fn)
@@ -608,11 +610,11 @@ class ConfusionMatrix(object):
             with h5py.File(filepath, 'r') as h5f:
                 if 'labels' in h5f.keys():
                     if names is not None:
-                        logging.warning(' '.join([
-                            '`names` is provided while "labels" exists in the',
-                            'hdf5 file! `names` is prioritized of the labels',
-                            'in hdf5 file.',
-                        ]))
+                        logger.warning(
+                            '`names` is provided while "labels" exists in the '
+                            'hdf5 file! `names` is prioritized of the labels '
+                            'in hdf5 file.'
+                        )
                         labels = names
                     else:
                         labels = h5f['labels'][:]
