@@ -131,26 +131,34 @@ class TestObjectBasics:
         nde_copy.argsorted_keys[-1] = -200
         assert nde_src != nde_copy
 
-    @pytest.mark.xfail
     def test_encoder_bidict_methods(self, example_labels):
         """Methods that are pass throughs to the bidict encoder."""
-        assert False
-        # TODO Double Unders
-        # len
-        # contains
-        # getitem
-        # iter
-        # reverse
+        nde = NDE(example_labels)
 
-        # TODO Dict methods
-        # keys
-        # values
-        # items
-        # get
+        # Double Unders
+        # Test len
+        assert len(nde) == len(nde.encoder)
 
-        # TODO Bidict properties / methods
-        # inverse
-        # inv
+        # Test contains, getitem, dict method: get
+        for i, label in enumerate(example_labels):
+            assert label in nde
+            assert nde[label] == i
+            assert nde.get(label) == i
+
+        # Test iter and reversed
+        assert tuple(iter(nde)) == example_labels
+        assert tuple(reversed(nde)) == tuple(reversed(example_labels))
+
+        # Dict methods: keys, values, items, get
+        assert nde.keys() == nde.encoder.keys()
+        assert nde.values() == nde.encoder.values()
+        assert nde.items() == nde.encoder.items()
+        assert nde.get('pie', None) is None
+
+        # Bidict properties / methods
+        assert nde.inverse is nde.encoder.inverse
+        assert nde.inv is nde.encoder.inv
+        assert nde.inv is nde.encoder.inverse
 
 
 @pytest.mark.dependency(name='encoder_knowns', depends=['object_basics'])

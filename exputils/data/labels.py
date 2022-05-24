@@ -313,6 +313,9 @@ class NominalDataEncoder(object):
     def __iter__(self):
         return iter(self.encoder)
 
+    def __reversed__(self):
+        return reversed(self.encoder)
+
     def __len__(self):
         return len(self.encoder)
 
