@@ -5,10 +5,6 @@ from itertools import islice
 from bidict import OrderedBidict, MutableBidict
 import numpy as np
 
-# TODO  rm scikit-learn dependency. Its unnecessary for the most part.
-from sklearn.utils import validation
-from sklearn.preprocessing import label_binarize
-
 import logging
 logger = logging.getLogger(__name__)
 
