@@ -62,6 +62,7 @@ class TestObjectBasics:
         # Test the default properties
         assert nde_1.unknown_key is None
         assert nde_1.unknown_idx is None
+        assert nde_1.shift is 0
 
         # Test equality check `==`, `!=`, `is`, `is not` between NDEs.
         nde_2 = NDE(example_labels)
@@ -84,6 +85,7 @@ class TestObjectBasics:
         # Test the default properties
         assert nde_2.unknown_key is None
         assert nde_2.unknown_idx is None
+        assert nde_2.shift is 0
 
         # Test comparison of NDEs
         assert nde_1 == nde_2
@@ -163,8 +165,11 @@ class TestObjectBasics:
 
 @pytest.mark.dependency(name='encoder_knowns', depends=['object_basics'])
 class TestLabelEncoder:
-    @pytest.mark.parametrize('one_hot', [False, True])
-    def test_encode_decode(self, one_hot, example_labels):
+    @pytest.mark.parametrize(
+        'one_hot,shift',
+        [(False, 0), (True, 0), (False, 20), (True, 20)],
+    )
+    def test_encode_decode(self, one_hot, shift, example_labels):
         n_labels = len(example_labels)
         ref_labels = np.array(example_labels)
         if one_hot:
@@ -172,12 +177,12 @@ class TestLabelEncoder:
             decode_axes = [-1] * 10
             decode_axes_x16 = [-1] * 4
         else:
-            ref_enc = np.arange(n_labels)
+            ref_enc = np.arange(n_labels) + shift
             decode_axes = [None] * 10
             decode_axes_x16 = [None] * 4
 
         # Check encoding of a list and tuple
-        nde = NDE(example_labels)
+        nde = NDE(example_labels, shift=shift)
         assert (nde.encode(example_labels, one_hot) == ref_enc).all()
         assert (nde.encode(list(example_labels), one_hot) == ref_enc).all()
 
@@ -223,7 +228,15 @@ class TestLabelEncoder:
 
     @pytest.mark.xfail
     def test_shift(self, example_labels):
-        assert False
+        nde = NDE(example_labels)
+
+        nde_shifted = NDE(example_labels, shift=20)
+        assert nde_shifted.shift == 20
+
+        # TODO check check the
+        # TODO check shifted encodings and decoding.
+
+        #assert False
 
     @pytest.mark.xfail
     def test_pop(self, example_labels):

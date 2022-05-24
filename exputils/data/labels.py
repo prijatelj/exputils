@@ -225,7 +225,7 @@ class NominalDataEncoder(object):
             # keys only, which is it given the check and NOT ignore_dups
 
         self.encoder = OrderedBidict({
-            key: enc + shift for enc, key in enumerate(ordered_keys, shift)
+            key: enc for enc, key in enumerate(ordered_keys, shift)
         })
 
         # Handle all unknown key internal state and checks
@@ -365,6 +365,10 @@ class NominalDataEncoder(object):
     def unknown_idx(self):
         return self.encoder.get(self._unknown_key, None)
 
+    @property
+    def shift(self):
+        return next(iter(self.encoder.inverse))
+
     def keys(self, *args, **kwargs):
         return self.encoder.keys(*args, **kwargs)
 
@@ -458,9 +462,21 @@ class NominalDataEncoder(object):
             )]
 
         if one_hot:
+            # TODO beware shift for when a one hot encoding!
             # Supporting multioutput data: make new axis last by default
-            return np.eye(len(self.encoder))[encoded]
+            if self.pos_label != 1 or self.neg_label != 0:
+                n_classes = len(self.encoder)
+                one_hot_classes = np.empty([n_classes] * 2)
+                one_hot_classes.fill(self.neg_label)
+                one_hot_classes[np.eye(n_classes, dtype=bool)] = \
+                    np.array([self.pos_label] * n_classes)
+            else:
+                one_hot_classes = np.eye(len(self.encoder))
+            return one_hot_classes[encoded]
             # TODO support changing where the added dimension goes.
+        elif keys.dtype != object and self.shift != 0:
+            print(self.shift)
+            return encoded + self.shift
         return encoded
 
         # TODO to get this to work w/ np.searchsorted as sklearn does it, a
@@ -490,12 +506,14 @@ class NominalDataEncoder(object):
         if isinstance(one_hot_axis, int):
             encodings = encodings.argmax(axis=one_hot_axis)
             # TODO check encodings.shape to expected shape
+            if self.shift != 0:
+                encodings += self.shift
 
         # inverse transform of empty array is empty array
         if n_samples(encodings) == 0:
             return np.array([])
 
-        diff = np.setdiff1d(encodings, np.arange(len(self.keys())))
+        diff = np.setdiff1d(encodings, np.array(self.inv))
         if len(diff):
             raise ValueError(
                 f'encodings contains previously unseen labels: {diff}'
@@ -503,6 +521,8 @@ class NominalDataEncoder(object):
             # TODO hard to handle unknowns in the decoding case, but could do
             # update or default as well, I suppose.
 
+        if self.shift != 0:
+            return np.array(self.encoder)[np.array(encodings) - self.shift]
         return np.array(self.encoder)[np.array(encodings)]
 
     def shift_encoding(self, shift):
