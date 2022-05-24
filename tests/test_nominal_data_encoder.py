@@ -162,18 +162,75 @@ class TestObjectBasics:
 
 
 @pytest.mark.dependency(name='encoder_knowns', depends=['object_basics'])
-@pytest.mark.xfail
 class TestLabelEncoder:
-    def test_encode_decode(self):
+    @pytest.mark.parametrize('one_hot', [False, True])
+    def test_encode_decode(self, one_hot, example_labels):
+        n_labels = len(example_labels)
+        ref_labels = np.array(example_labels)
+        if one_hot:
+            ref_enc = np.eye(n_labels)
+            decode_axes = [-1] * 10
+            decode_axes_x16 = [-1] * 4
+        else:
+            ref_enc = np.arange(n_labels)
+            decode_axes = [None] * 10
+            decode_axes_x16 = [None] * 4
+
+        # Check encoding of a list and tuple
+        nde = NDE(example_labels)
+        assert (nde.encode(example_labels, one_hot) == ref_enc).all()
+        assert (nde.encode(list(example_labels), one_hot) == ref_enc).all()
+
+        # Check np.ndarray encoding and decoding of different shapes
+        shapes = (
+            [n_labels],
+            [1, n_labels],
+            [1, 1, 1, n_labels, 1],
+            [3, 21],
+            [21, 3],
+            [7, 3, 3],
+            [3, 7, 3],
+            [3, 3, 7],
+            [9, 7],
+            [7, 9],
+        )
+        for i, shape in enumerate(shapes):
+            encoded = nde.encode(ref_labels.reshape(shape), one_hot)
+            enc_shape = shape + [n_labels] if one_hot else shape
+            assert (encoded == ref_enc.reshape(enc_shape)).all()
+            assert (
+                nde.decode(encoded, decode_axes[i])
+                == ref_labels.reshape(shape)
+            ).all()
+
+        # Check np.ndarray encoding and decoding of larger dimensions
+        ref_labels_x16 = np.concatenate([ref_labels] * 16)
+        ref_enc_x16 = np.concatenate([ref_enc] * 16)
+        shapes_x16 = (
+            [2, 8, 3, 7, 3],
+            [4, 4, 3, 7, 3],
+            [2, 2, 2, 2, 3, 7, 3],
+            [1, 16, 3, 7, 3],
+        )
+        for i, shape in enumerate(shapes_x16):
+            encoded = nde.encode(ref_labels_x16.reshape(shape), one_hot)
+            enc_shape = shape + [n_labels] if one_hot else shape
+            assert (encoded == ref_enc_x16.reshape(enc_shape)).all()
+            assert (
+                nde.decode(encoded, decode_axes_x16[i])
+                == ref_labels_x16.reshape(shape)
+            ).all()
+
+    @pytest.mark.xfail
+    def test_shift(self, example_labels):
         assert False
 
-    def test_shift(self):
+    @pytest.mark.xfail
+    def test_pop(self, example_labels):
         assert False
 
-    def test_pop(self):
-        assert False
-
-    def test_reorder(self):
+    @pytest.mark.xfail
+    def test_reorder(self, example_labels):
         assert False
 
 

@@ -1,9 +1,12 @@
 """Useful label management classes and functions."""
 from copy import deepcopy
 from itertools import islice
+import numbers
 
 from bidict import OrderedBidict, MutableBidict
 import numpy as np
+from sklearn.preprocessing import label_binarize
+from sklearn.utils.validation import _num_samples as n_samples
 
 import logging
 logger = logging.getLogger(__name__)
@@ -188,16 +191,28 @@ class NominalDataEncoder(object):
         if ignore_dups:
             raise NotImplementedError('Ignore_dups is not yet implemented.')
 
+        if neg_label >= pos_label:
+            raise ValueError(
+                'neg_label ({neg_label}) >= pos_label ({pos_label}), must be <'
+            )
+        self.pos_label = pos_label
+        self.neg_label = neg_label
+        self.sparse_output = sparse_output
+
         if sort_keys:
-            # Sort the keys so they are in the encoder sorted, rather than
-            # order given.
-            ordered_keys = np.unique(ordered_keys)  # np.unique sorts the keys
+            # np.unique sorts the keys lexically
+            ordered_keys = np.unique(ordered_keys)
             self.argsorted_keys = None
 
-            # KeySortedBidict keeps the keys sorted
+            """TODO
+            # Sort the keys so they are in the encoder sorted, rather than
+            # order given.
+
+            # KeySortedBidict keeps the keys sorted when updated.
             self.encoder = KeySortedBidict({
                 key: enc + shift for enc, key in enumerate(ordered_keys, shift)
             })
+            #"""
         else:
             # Use in order given, but maintain sorted_args for encoding
             unique, self.argsorted_keys = np.unique(
@@ -209,13 +224,9 @@ class NominalDataEncoder(object):
             # work to get argsorted_keys unless ordered_keys is already unique
             # keys only, which is it given the check and NOT ignore_dups
 
-            self.encoder = OrderedBidict({
-                key: enc + shift for enc, key in enumerate(ordered_keys, shift)
-            })
-
-        self.pos_label = pos_label
-        self.neg_label = neg_label
-        self.sparse_output = sparse_output
+        self.encoder = OrderedBidict({
+            key: enc + shift for enc, key in enumerate(ordered_keys, shift)
+        })
 
         # Handle all unknown key internal state and checks
         self._unknown_key = unknown_key
@@ -344,7 +355,7 @@ class NominalDataEncoder(object):
     @property
     def are_keys_sorted(self):
         """Returns Boolean of if the keys are sorted within this encoder."""
-        return isinstance(self.encoder, KeySortedBidict)
+        return self.argsorted_keys is None
 
     @property
     def unknown_key(self):
@@ -392,17 +403,20 @@ class NominalDataEncoder(object):
         `update` that defaults to False here.
         """
         if one_hot:
-            return label_binarize(
-                keys,
-                classes=np.array(self.encoder),
-                pos_label=self.pos_label,
-                neg_label=self.neg_label,
-                sparse_output=self.sparse_output,
-            )
+            try:
+                return label_binarize(
+                    keys,
+                    classes=np.array(self.encoder),
+                    pos_label=self.pos_label,
+                    neg_label=self.neg_label,
+                    sparse_output=self.sparse_output,
+                )
+            except ValueError:
+                pass
+
         keys = np.array(keys)
 
-        #keys = validation.column_or_1d(keys, warn=True)
-        if validation._num_samples(keys) == 0:
+        if n_samples(keys) == 0:
             return np.array([])
 
         # Check for unrecognized keys # TODO may be able to be more efficient?
@@ -426,22 +440,28 @@ class NominalDataEncoder(object):
 
         if keys.dtype == object:
             # Python encode
-            return np.array([
+            encoded =np.array([
                 self.encoder.get(key, self.unknown_idx) for key in keys
             ]).reshape(keys)
 
         # Numpy encode
-        if self.are_keys_sorted:
+        elif self.are_keys_sorted:
             # Encoder keys are already sorted within the encoder.
             # TODO handle masking all unknowns to unknown! Perhaps masked array?
-            return np.searchsorted(self.encoder, keys)
+            encoded = np.searchsorted(self.encoder, keys)
+        else:
+            # TODO handle masking all unknowns to unknown! Perhaps masked array?
+            encoded = self.argsorted_keys[np.searchsorted(
+                self.encoder,
+                keys,
+                sorter=self.argsorted_keys,
+            )]
 
-        # TODO handle masking all unknowns to unknown! Perhaps masked array?
-        return self.argsorted_keys[np.searchsorted(
-            self.encoder,
-            keys,
-            sorter=self.argsorted_keys,
-        )]
+        if one_hot:
+            # Supporting multioutput data: make new axis last by default
+            return np.eye(len(self.encoder))[encoded]
+            # TODO support changing where the added dimension goes.
+        return encoded
 
         # TODO to get this to work w/ np.searchsorted as sklearn does it, a
         # sorted args of the keys must always be present. This means as the
@@ -471,11 +491,8 @@ class NominalDataEncoder(object):
             encodings = encodings.argmax(axis=one_hot_axis)
             # TODO check encodings.shape to expected shape
 
-        # TODO add support for decoding an ndarray of any shape
-
-        #encodings = validation.column_or_1d(encodings, warn=True)
         # inverse transform of empty array is empty array
-        if validation._num_samples(encodings) == 0:
+        if n_samples(encodings) == 0:
             return np.array([])
 
         diff = np.setdiff1d(encodings, np.arange(len(self.keys())))
