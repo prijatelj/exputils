@@ -233,7 +233,7 @@ class NominalDataEncoder(object):
             if unknown_key in self.encoder:
                 if unknown_idx is not None:
                     # Check if the unknown index is correct
-                    if unknown_idx != self.unknown_key:
+                    if unknown_idx != self.encoder[self.unknown_key]:
                         raise ValueError(' '.join([
                             '`unknown_key` in ordered_keys but `unknown idx`',
                             'given a different index than expected:',
@@ -287,17 +287,25 @@ class NominalDataEncoder(object):
         if not isinstance(other, NominalDataEncoder):
             logger.warning(
                 'Unsupported comparison of NominalDataEncoder object to an '
-                'object of type %s',
+                'object of type `%s`. Performing surface level duck typing.',
                 type(other),
             )
+        for key in vars(self):
+            self_val = getattr(self, key)
+            other_val = getattr(other, key)
+            try:
+                if self_val != other_val:
+                    return False
+            except ValueError:
+                if (self_val != other_val).all():
+                    return False
         return (
-            self.encoder == other.encoder
-            and (self.argsorted_keys == other.argsorted_keys).all()
-            and self.pos_label == other.pos_label
-            and self.neg_label == other.neg_label
-            and self.sparse_output == other.sparse_output
-            and self.unknown_key == other.unknown_key
+            self.unknown_key == other.unknown_key
+            and self.unknown_idx == other.unknown_idx
         )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __contains__(self, obj):
         return obj in self.encoder
