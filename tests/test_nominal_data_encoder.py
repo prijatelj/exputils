@@ -6,6 +6,7 @@ The fixtures are the expected parsed tokens from docstr.parse.
 """
 from collections import OrderedDict
 import copy
+from string import ascii_uppercase, ascii_lowercase
 
 import pytest
 
@@ -13,28 +14,13 @@ from exputils.data.labels import NominalDataEncoder
 
 
 @pytest.fixture
-def abc_labels():
-    return [
-        'a',
-        'b',
-        'c',
-        'd',
-        'e',
-        'f',
-        'g',
-        'A',
-        'B',
-        'C',
-        'D',
-        'E',
-        'F',
-        'G',
-        '0',
-        '1',
-        '2',
-        '3',
-        'noxious',
-    ]
+def example_labels():
+    return (
+        [str(i) for i in range(10)]
+        + list(ascii_uppercase)
+        + list(ascii_lowercase)
+        + ['noxious']
+    )
 
 @pytest.mark.dependency(name='object_basics', scope='session')
 #@pytest.mark.incremental
