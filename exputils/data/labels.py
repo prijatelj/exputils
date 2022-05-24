@@ -285,9 +285,10 @@ class NominalDataEncoder(object):
 
     def __eq__(self, other):
         if not isinstance(other, NominalDataEncoder):
-            raise TypeError(
+            logger.warning(
                 'Unsupported comparison of NominalDataEncoder object to an '
-                f'object of type {type(other)}'
+                'object of type %s',
+                type(other),
             )
         return (
             self.encoder == other.encoder
