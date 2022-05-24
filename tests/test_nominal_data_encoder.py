@@ -228,6 +228,7 @@ class TestLabelEncoder:
             ).all()
 
     def test_shift_encoding(self, example_labels):
+        """Tests the shift_encoding method for positive and negative shifts."""
         nde = NDE(example_labels)
         assert nde.shift == 0
 
@@ -243,7 +244,8 @@ class TestLabelEncoder:
         assert nde == nde_shifted
 
     @pytest.mark.xfail
-    def test_pop(self, example_labels):
+    def test_append_pop(self, example_labels):
+        """Tests the append and pop methods."""
         assert False
 
     @pytest.mark.xfail
