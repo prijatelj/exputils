@@ -6,13 +6,15 @@ from copy import deepcopy
 from datetime import datetime
 import importlib.util
 import json
-import logging
 import os
 import sys
 
 # TODO import h5py
 from packaging import version
 import numpy as np
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 # TODO currently NestedNamespace still requires all args to be uniquely
@@ -104,7 +106,7 @@ def create_filepath(
     """
     # Check if file already exists
     if not overwrite and os.path.isfile(filepath):
-        logging.warning(
+        logger.warning(
             ' '.join([
                 '`overwrite` is False to prevent overwriting existing files',
                 'and there is an existing file at the given filepath: `%s`',
@@ -118,7 +120,7 @@ def create_filepath(
             datetime.now().strftime(datetime_fmt),
         )
 
-        logging.warning('The filepath has been changed to: %s', filepath)
+        logger.warning('The filepath has been changed to: %s', filepath)
     else:
         # Ensure the directory exists
         dir_path = os.path.dirname(filepath)
@@ -138,7 +140,7 @@ def create_dirs(
     """
     # Check if dir already exists
     if not overwrite and os.path.isdir(filepath):
-        logging.warning(
+        logger.warning(
             ' '.join([
                 '`overwrite` is False to prevent overwriting existing',
                 'directories and there is an existing file at the given',
@@ -154,7 +156,7 @@ def create_dirs(
         )
         os.makedirs(filepath, exist_ok=True)
 
-        logging.warning('The filepath has been changed to: %s', filepath)
+        logger.warning('The filepath has been changed to: %s', filepath)
     else:
         os.makedirs(filepath, exist_ok=True)
 
@@ -205,7 +207,7 @@ def save_json(
 
     # Check if file already exists
     if not overwrite and os.path.isfile(filepath):
-        logging.warning(
+        logger.warning(
             ' '.join([
                 '`overwrite` is False to prevent overwriting existing files',
                 'and there is an existing file at the given filepath: `%s`',
@@ -218,7 +220,7 @@ def save_json(
         filepath = parts[0] + datetime.now().strftime(datetime_fmt) \
             + parts[1] + parts[2]
 
-        logging.warning(f'The filepath has been changed to: {filepath}')
+        logger.warning(f'The filepath has been changed to: {filepath}')
 
     # Ensure the directory exists
     dir_path = filepath.rpartition(os.path.sep)
@@ -379,7 +381,7 @@ def set_logging(log_args):
 
         if log_args.filemode == 'a':
             # Adding some form of line break for ease of searching logs.
-            logging.info('Start of new logging session.')
+            logger.info('Start of new logging session.')
     else:
         logging.basicConfig(
             level=numeric_level,
@@ -465,18 +467,18 @@ def set_hardware(args):
     else:
         ml_libs = args.ml_libs
 
-    logging.info('Setting the default hardware configuration for %s', ml_libs)
+    logger.info('Setting the default hardware configuration for %s', ml_libs)
 
     if 'jax' in ml_libs:
         # TODO add option to provide default config, only add when necessary
-        logging.error('JAX default hardware config not implemented yet.')
+        logger.error('JAX default hardware config not implemented yet.')
 
     if 'keras' in ml_libs:
         import keras
         import tensorflow as tf
 
-        logging.info('Keras version being used: %s', keras.__version__)
-        logging.info('Tensorflow version being used: %s', tf.__version__)
+        logger.info('Keras version being used: %s', keras.__version__)
+        logger.info('Tensorflow version being used: %s', tf.__version__)
 
         if version.parse(tf.__version__) < version.parse('2.0.0'):
             # Tensorflow 1.15 backend
@@ -488,28 +490,28 @@ def set_hardware(args):
         else:
             # TODO handle tf 2.+ config of hardware. Add option to provide
             # default config, only add when necessary
-            logging.error('Tensorflow 2.+ default config not implemented yet.')
+            logger.error('Tensorflow 2.+ default config not implemented yet.')
 
         # NOTE in the future, may have to add support for other Keras backends
     elif 'tensorflow' in ml_libs or 'tf' in ml_libs:
         import tensorflow as tf
 
-        logging.info('Tensorflow version being used: %s', tf.__version__)
+        logger.info('Tensorflow version being used: %s', tf.__version__)
 
         if version.parse(tf.__version__) < version.parse('2.0.0'):
             # TODO handle tf 1.15 config of hardware. Add option to provide
             # default config, only add when necessary
-            logging.error(
+            logger.error(
                 'Tensorflow 1.15 default config not implemented w/o Keras.',
             )
         else:
             # TODO handle tf 2.+ config of hardware. Add option to provide
             # default config, only add when necessary
-            logging.error('Tensorflow 2.+ default config not implemented yet.')
+            logger.error('Tensorflow 2.+ default config not implemented yet.')
 
     if 'torch' in ml_libs or 'pytorch' in ml_libs:
         # TODO add option to provide default config, only add when necessary
-        logging.error('PyTorch default config not implemented yet.')
+        logger.error('PyTorch default config not implemented yet.')
 
 
 def get_tf_config(cpu_cores=1, cpus=1, gpus=0, allow_soft_placement=True):
