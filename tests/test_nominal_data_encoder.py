@@ -259,12 +259,7 @@ class TestLabelEncoder:
         assert nde != nde_copy
         assert nde == nde_appended
 
-        print(nde.argsorted_keys)
-
         nde.pop('pie')
-
-        print(nde.argsorted_keys)
-        print(nde_copy.argsorted_keys)
 
         assert nde == nde_copy
         assert nde != nde_appended
@@ -287,16 +282,31 @@ class TestLabelEncoder:
             nde.append(key)
         assert nde == nde_appended
 
-    @pytest.mark.xfail
-    def test_reorder(self, example_labels):
-        assert False
+        # Test removal of a key value pair using the encoding.
+        for i in range(1, 4):
+            nde.pop(66 - i, True)
+        assert nde == nde_copy
+
+        # Test removal of a key in the middle
+        ex_labels_miss_A = list(example_labels)
+        del ex_labels_miss_A[10]
+        nde_missing_A = NDE(ex_labels_miss_A)
+
+        nde.pop('A')
+        nde == nde_missing_A
+
+    #@pytest.mark.xfail
+    #TODO def test_reorder(self, example_labels):
+    #    assert False
 
 
 @pytest.mark.dependency(depends=['encoder_knowns'])
 @pytest.mark.xfail
 class TestUnknownLabel:
-    def test_init_unknown_key_given_in_ordered_keys(self):
-        assert False
+    def test_init_unknown_key_given_in_ordered_keys(self, example_labels):
+        nde = NDE(['unknown'] + list(example_labels), unknown_key='unknown')
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 0
 
     def test_init_unknown_key_given_not_in_ordered_keys(self):
         assert False
