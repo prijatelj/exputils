@@ -437,10 +437,26 @@ class TestUnknownLabel:
 
     def test_pop(self, example_labels):
         nde = NDE(example_labels, unknown_key='unknown')
+        nde_knowns = NDE(example_labels)
         assert nde.unknown_key == 'unknown'
         assert nde.unknown_idx == 0
 
-        #nde.pop()
+        nde.pop(nde.unknown_key)
+        assert nde.unknown_key is None
+        assert nde.unknown_idx is None
+        assert nde == nde_knowns
+
+    def test_pop_shift(self, example_labels):
+        nde = NDE(example_labels, unknown_key='unknown', shift=12)
+        nde_knowns = NDE(example_labels, shift=12)
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 12
+
+        assert nde.pop(nde.unknown_key) == 12
+        assert nde.unknown_key is None
+        assert nde.unknown_idx is None
+        assert nde == nde_knowns
+        assert nde.shift == 12
 
     #@pytest.mark.xfail
     #def test_reorder(self):
