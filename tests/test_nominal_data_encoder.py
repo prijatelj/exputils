@@ -93,6 +93,9 @@ class TestObjectBasics:
         assert not (nde_1 is nde_2)
         assert nde_1 is not nde_2
 
+        # TODO test error on ignore_dups = False
+        # TODO test no error on ignore_dups = True
+
     def test_load_save(self, example_labels, example_labels_file):
         assert NDE.load(example_labels_file) == NDE(example_labels)
 
@@ -166,12 +169,33 @@ class TestObjectBasics:
 @pytest.mark.dependency(name='encoder_knowns', depends=['object_basics'])
 class TestLabelEncoder:
     @pytest.mark.parametrize(
-        'one_hot,shift',
-        [(False, 0), (True, 0), (False, 20), (True, 20)],
+        'one_hot,shift,unknown_key',
+        [
+            (False, 0, None),
+            (True, 0, None),
+            (False, 20, None),
+            (True, 20, None),
+            # label '0' treated as unknown
+            (False, 0, '0'),
+            (True, 0, '0'),
+            (False, 20, '0'),
+            (True, 20, '0'),
+            # Unknown added at first idx
+            (False, 0, 'unknown'),
+            (True, 0, 'unknown'),
+            (False, 20, 'unknown'),
+            (True, 20, 'unknown'),
+        ],
     )
-    def test_encode_decode(self, one_hot, shift, example_labels):
-        n_labels = len(example_labels)
+    def test_encode_decode(self, one_hot, shift, unknown_key, example_labels):
+        nde = NDE(example_labels, shift=shift, unknown_key=unknown_key)
+
+        if unknown_key not in {None, '0'}:
+            example_labels = tuple(['unknown'] + list(example_labels))
+
         ref_labels = np.array(example_labels)
+        n_labels = len(example_labels)
+
         if one_hot:
             ref_enc = np.eye(n_labels)
             decode_axes = [-1] * 10
@@ -182,24 +206,37 @@ class TestLabelEncoder:
             decode_axes_x16 = [None] * 4
 
         # Check encoding of a list and tuple
-        nde = NDE(example_labels, shift=shift)
         assert nde.shift == shift
         assert (nde.encode(example_labels, one_hot) == ref_enc).all()
         assert (nde.encode(list(example_labels), one_hot) == ref_enc).all()
 
         # Check np.ndarray encoding and decoding of different shapes
-        shapes = (
-            [n_labels],
-            [1, n_labels],
-            [1, 1, 1, n_labels, 1],
-            [3, 21],
-            [21, 3],
-            [7, 3, 3],
-            [3, 7, 3],
-            [3, 3, 7],
-            [9, 7],
-            [7, 9],
-        )
+        if unknown_key not in {None, '0'}:
+            shapes = (
+                [n_labels],
+                [1, n_labels],
+                [1, 1, 1, n_labels, 1],
+                [8, 8],
+                [32, 2],
+                [2, 16, 2],
+                [4, 16],
+                [16, 4],
+                [2, 2, 4, 4],
+                [2, 2, 2, 2, 4],
+            )
+        else:
+            shapes = (
+                [n_labels],
+                [1, n_labels],
+                [1, 1, 1, n_labels, 1],
+                [3, 21],
+                [21, 3],
+                [7, 3, 3],
+                [3, 7, 3],
+                [3, 3, 7],
+                [9, 7],
+                [7, 9],
+            )
         for i, shape in enumerate(shapes):
             encoded = nde.encode(ref_labels.reshape(shape), one_hot)
             enc_shape = shape + [n_labels] if one_hot else shape
@@ -208,6 +245,9 @@ class TestLabelEncoder:
                 nde.decode(encoded, decode_axes[i])
                 == ref_labels.reshape(shape)
             ).all()
+
+        if unknown_key != '0':
+            return
 
         # Check np.ndarray encoding and decoding of larger dimensions
         ref_labels_x16 = np.concatenate([ref_labels] * 16)
@@ -295,12 +335,18 @@ class TestLabelEncoder:
         nde.pop('A')
         nde == nde_missing_A
 
+        # Test shift update after pop
+        nde = NDE(example_labels, shift=12)
+        assert nde.shift == 12
+        nde.pop('0')
+        assert nde.shift == 12
+
     #@pytest.mark.xfail
     #TODO def test_reorder(self, example_labels):
     #    assert False
 
 
-@pytest.mark.dependency(depends=['encoder_knowns'])
+#@pytest.mark.dependency(depends=['encoder_knowns'])
 class TestUnknownLabel:
     def test_init_unknown_key_given_in_ordered_keys(self, example_labels):
         # At beginning
@@ -368,19 +414,34 @@ class TestUnknownLabel:
             raised_error = True
         assert raised_error
 
-    # Test label encoder with unknown label
-    @pytest.mark.xfail
-    def test_encode_decode(self):
-        assert False
+    def test_shift(self, example_labels):
+        nde = NDE(example_labels, unknown_key='unknown')
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 0
+        assert nde.shift == 0
 
-    @pytest.mark.xfail
-    def test_shift(self):
-        assert False
+        nde_copy = deepcopy(nde)
+        assert nde == nde_copy
 
-    @pytest.mark.xfail
-    def test_pop(self):
-        assert False
+        nde_shifted = NDE(example_labels, shift=20, unknown_key='unknown')
+        assert nde_shifted.shift == 20
+        assert nde_shifted.unknown_key == 'unknown'
+        assert nde_shifted.unknown_idx == 20
 
-    @pytest.mark.xfail
-    def test_reorder(self):
-        assert False
+        nde.shift_encoding(20)
+
+        assert nde == nde_shifted
+
+        nde_shifted.shift_encoding(-20)
+        assert nde_copy == nde_shifted
+
+    def test_pop(self, example_labels):
+        nde = NDE(example_labels, unknown_key='unknown')
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 0
+
+        #nde.pop()
+
+    #@pytest.mark.xfail
+    #def test_reorder(self):
+    #    assert False

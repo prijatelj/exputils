@@ -253,11 +253,6 @@ class NominalDataEncoder(object):
                 tmp = OrderedBidict({unknown_key: shift})
                 tmp.update(self.encoder)
                 self.encoder = tmp
-
-               # if self.argsorted_keys is not None:
-               #     # TODO unit test to ensure this works. Also may always be
-               #     # necessary w/ unsorted unknown_key
-               #     self.argsorted_keys = np.append(0, self.argsorted_keys + 1)
             elif unknown_idx in {-1, len(self.encoder) + shift}:
                 self.append(unknown_key)
                 # TODO unit test to ensure append handles unknown correctly!
@@ -637,6 +632,7 @@ class NominalDataEncoder(object):
 
         # Obtain the last encoding
         last_enc = next(reversed(self.encoder.inverse))
+        prior_shift = self.shift
 
         # Remove the given key, whether it is a key or encoding
         if encoding:
@@ -645,10 +641,13 @@ class NominalDataEncoder(object):
         else:
             enc = self.encoder.pop(key)
 
+        print(key, enc)
+
         if enc != last_enc:
             # Decrement all following keys by one
-            for k in list(self.encoder)[enc:]:
-                self.encoder[k] -= 1
+            for key in list(self.encoder)[enc - prior_shift:]:
+                print(key, self.encoder[key])
+                self.encoder[key] -= 1
 
         if not self.are_keys_sorted:
             # Must remove the key's respective arg from argsorted_keys
