@@ -638,17 +638,6 @@ class NominalDataEncoder(object):
         # Obtain the last encoding
         last_enc = next(reversed(self.encoder.inverse))
 
-        if not self.are_keys_sorted:
-            # Must remove the key's respective arg from argsorted_keys
-            arg = np.argwhere(np.array(self.encoder) == (
-                self.encoder.inverse[key] if encoding else key
-            ))[0][0]
-
-            self.argsorted_keys = np.delete(self.argsorted_keys, arg)
-
-            # adjust the rest of the args accordingly
-            self.argsorted_keys[np.where(self.argsorted_keys > arg)] -= 1
-
         # Remove the given key, whether it is a key or encoding
         if encoding:
             enc = key
@@ -660,6 +649,23 @@ class NominalDataEncoder(object):
             # Decrement all following keys by one
             for k in list(self.encoder)[enc:]:
                 self.encoder[k] -= 1
+
+        if not self.are_keys_sorted:
+            # Must remove the key's respective arg from argsorted_keys
+            """ TODO fix
+            arg = np.argwhere(np.array(self.encoder) == (
+                self.encoder.inverse[key] if encoding else key
+            ))[0][0]
+
+            self.argsorted_keys = np.delete(self.argsorted_keys, arg)
+
+            # adjust the rest of the args accordingly
+            self.argsorted_keys[np.where(self.argsorted_keys > arg)] -= 1
+            #"""
+            unique, self.argsorted_keys = np.unique(
+                np.array(self.encoder),
+                return_index=True,
+            )
 
         return key if encoding else enc
 

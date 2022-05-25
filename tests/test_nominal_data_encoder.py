@@ -243,10 +243,49 @@ class TestLabelEncoder:
         nde_shifted.shift_encoding(-20)
         assert nde == nde_shifted
 
-    @pytest.mark.xfail
     def test_append_pop(self, example_labels):
         """Tests the append and pop methods."""
-        assert False
+        nde = NDE(example_labels)
+        nde_copy = deepcopy(nde)
+        nde_appended = NDE(list(example_labels) + ['pie'])
+
+        assert nde != nde_appended
+        assert nde_copy != nde_appended
+        assert nde == nde_copy
+
+        # Test an individual key first.
+        nde.append('pie')
+
+        assert nde != nde_copy
+        assert nde == nde_appended
+
+        print(nde.argsorted_keys)
+
+        nde.pop('pie')
+
+        print(nde.argsorted_keys)
+        print(nde_copy.argsorted_keys)
+
+        assert nde == nde_copy
+        assert nde != nde_appended
+
+        # Test multiple keyes
+        nde_appended = NDE(list(example_labels) + ['pie', 'cake', 'cheese'])
+        nde.append(['pie', 'cake', 'cheese'])
+        assert nde == nde_appended
+        assert nde != nde_copy
+
+        nde_appended_copy = deepcopy(nde)
+        assert nde == nde_appended_copy
+
+        # TODO Include pop multiple keys? nde.pop(['pie', 'cake', 'cheese'])
+        for key in ['pie', 'cake', 'cheese']:
+            nde.pop(key)
+        assert nde == nde_copy
+
+        for key in ['pie', 'cake', 'cheese']:
+            nde.append(key)
+        assert nde == nde_appended
 
     @pytest.mark.xfail
     def test_reorder(self, example_labels):
