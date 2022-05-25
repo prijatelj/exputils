@@ -258,7 +258,7 @@ class NominalDataEncoder(object):
                #     # TODO unit test to ensure this works. Also may always be
                #     # necessary w/ unsorted unknown_key
                #     self.argsorted_keys = np.append(0, self.argsorted_keys + 1)
-            elif unknown_idx == len(self.encoder) + shift:
+            elif unknown_idx in {-1, len(self.encoder) + shift}:
                 self.append(unknown_key)
                 # TODO unit test to ensure append handles unknown correctly!
             elif (
@@ -278,8 +278,8 @@ class NominalDataEncoder(object):
 
             else:
                 raise TypeError(' '.join([
-                    '`unknown_idx` is not None or an int within',
-                    '[shift, shift + len(self.encoder)]!',
+                    '`unknown_idx` is not None or an int within label indices',
+                    f'[{shift}, {shift + len(self.encoder)}]!',
                 ]))
 
             if self.argsorted_keys is not None:

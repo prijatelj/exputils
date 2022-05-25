@@ -301,25 +301,86 @@ class TestLabelEncoder:
 
 
 @pytest.mark.dependency(depends=['encoder_knowns'])
-@pytest.mark.xfail
 class TestUnknownLabel:
     def test_init_unknown_key_given_in_ordered_keys(self, example_labels):
+        # At beginning
         nde = NDE(['unknown'] + list(example_labels), unknown_key='unknown')
         assert nde.unknown_key == 'unknown'
         assert nde.unknown_idx == 0
 
-    def test_init_unknown_key_given_not_in_ordered_keys(self):
-        assert False
+        nde = NDE(
+            ['unknown'] + list(example_labels),
+            unknown_key='unknown',
+            unknown_idx=0,
+        )
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 0
+
+        # At end
+        nde = NDE(list(example_labels) + ['unknown'], unknown_key='unknown')
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == len(example_labels)
+
+        nde = NDE(
+            list(example_labels) + ['unknown'],
+            unknown_key='unknown',
+            unknown_idx=len(example_labels),
+        )
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == len(example_labels)
+
+        # In middle
+        nde = NDE(example_labels, unknown_key='A')
+        assert nde.unknown_key == 'A'
+        assert nde.unknown_idx == 10
+
+        # Expects ValueError
+        raised_error = False
+        try:
+            nde = NDE(example_labels, unknown_key='A', unknown_idx=22)
+        except ValueError:
+            raised_error = True
+        assert raised_error
+
+    def test_init_unknown_key_given_not_in_ordered_keys(self, example_labels):
+        # At beginning
+        nde = NDE(example_labels, unknown_key='unknown')
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 0
+
+        # At end
+        nde = NDE(example_labels, unknown_key='unknown', unknown_idx=-1)
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == len(example_labels)
+
+        # In middle
+        assert nde['A'] == 10
+        nde = NDE(example_labels, unknown_key='unknown', unknown_idx=10)
+        assert nde.unknown_key == 'unknown'
+        assert nde.unknown_idx == 10
+        assert nde['A'] == 11
+
+        # Expects ValueError
+        raised_error = False
+        try:
+            nde = NDE(example_labels, unknown_key='unknown', unknown_idx=220)
+        except TypeError:
+            raised_error = True
+        assert raised_error
 
     # Test label encoder with unknown label
+    @pytest.mark.xfail
     def test_encode_decode(self):
         assert False
 
+    @pytest.mark.xfail
     def test_shift(self):
         assert False
 
+    @pytest.mark.xfail
     def test_pop(self):
         assert False
 
+    @pytest.mark.xfail
     def test_reorder(self):
         assert False
