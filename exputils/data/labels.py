@@ -441,7 +441,7 @@ class NominalDataEncoder(object):
             # Python encode
             encoded =np.array([
                 self.encoder.get(key, self.unknown_idx) for key in keys
-            ]).reshape(keys)
+            ]).reshape(keys.shape)
 
         # Numpy encode
         elif self.are_keys_sorted:
