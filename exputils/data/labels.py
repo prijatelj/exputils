@@ -112,10 +112,10 @@ class NominalDataEncoder(object):
     encoder : OrderedBidict
         The bidirectional mapping of nominal value to integer encoding. There
         can be no multiple keyes that map to the same values.
-    argsorted_keys : list = None
+    _argsorted_keys : list = None
         np.ndarray(int) = None
         When the keys in the encoder are not sorted, but instead saved in the
-        order they are given, then argsorted_keys is an array of the indices
+        order they are given, then _argsorted_keys is an array of the indices
         of the encoder keys in sorted order. This is necessary for encoding
         using numpy only when the keys are not sorted when saved into the
         encoder. If the keys are sorted when the encoder is created, then this
@@ -202,27 +202,24 @@ class NominalDataEncoder(object):
         if sort_keys:
             # np.unique sorts the keys lexically
             ordered_keys = np.unique(ordered_keys)
-            self.argsorted_keys = None
+        self._argsorted_keys = None
+        self._argsorted_unknown_idx = None
 
-            """TODO
-            # Sort the keys so they are in the encoder sorted, rather than
-            # order given.
+        """TODO
+        # Sort the keys so they are in the encoder sorted, rather than
+        # order given.
 
-            # KeySortedBidict keeps the keys sorted when updated.
-            self.encoder = KeySortedBidict({
-                key: enc + shift for enc, key in enumerate(ordered_keys, shift)
-            })
-            #"""
-        else:
-            # Use in order given, but maintain sorted_args for encoding
-            unique, self.argsorted_keys = np.unique(
-                ordered_keys,
-                return_index=True,
-            )
-            # TODO probably can make ignore dups and error raise more efficient
-            # if already using unique like this. NOTE that unique here does not
-            # work to get argsorted_keys unless ordered_keys is already unique
-            # keys only, which is it given the check and NOT ignore_dups
+        # KeySortedBidict keeps the keys sorted when updated.
+        self.encoder = KeySortedBidict({
+            key: enc + shift for enc, key in enumerate(ordered_keys, shift)
+        })
+        #"""
+        #else:
+        # Use in order given, but maintain sorted_args for encoding
+        # TODO probably can make ignore dups and error raise more efficient
+        # if already using unique like this. NOTE that unique here does not
+        # work to get _argsorted_keys unless ordered_keys is already unique
+        # keys only, which is it given the check and NOT ignore_dups
 
         self.encoder = OrderedBidict({
             key: enc for enc, key in enumerate(ordered_keys, shift)
@@ -277,14 +274,13 @@ class NominalDataEncoder(object):
                     f'[{shift}, {shift + len(self.encoder)}]!',
                 ]))
 
-            if self.argsorted_keys is not None:
-                # Must update the argsorted_keys for approriate encoding
-                # TODO replace this hotfix cuz this is inefficient!
-                #self.argsorted_keys = np.argsort(self.encoder)
-                unique, self.argsorted_keys = np.unique(
-                    self.encoder,
-                    return_index=True,
-                )
+            #if self._argsorted_keys is not None:
+
+        if not sort_keys:
+            # Must update the _argsorted_keys for approriate encoding
+            # TODO replace this hotfix cuz this is inefficient!
+            #self._argsorted_keys = np.argsort(self.encoder)
+            self._update_argsorted_keys(self.encoder)
 
     def __eq__(self, other):
         if not isinstance(other, NominalDataEncoder):
@@ -339,6 +335,14 @@ class NominalDataEncoder(object):
             setattr(result, key, deepcopy(val, memo))
         return result
 
+    def _update_argsorted_keys(self, keys):
+        """Updates argsorgted keys and the argsorted idx of the first key."""
+        unique, self._argsorted_keys = np.unique(keys, return_index=True)
+        if self.unknown_key is not None:
+            self._argsorted_unknown_idx = np.flatnonzero(
+                unique == self.unknown_key
+            )[0]
+
     @property
     def inv(self):
         return self.encoder.inverse
@@ -350,7 +354,7 @@ class NominalDataEncoder(object):
     @property
     def are_keys_sorted(self):
         """Returns Boolean of if the keys are sorted within this encoder."""
-        return self.argsorted_keys is None
+        return self._argsorted_keys is None
 
     @property
     def unknown_key(self):
@@ -395,6 +399,11 @@ class NominalDataEncoder(object):
 
         Notes
         -----
+        When unknown_idx is not None, currently uses numpy.where() after
+        checking all np.searchsorted values of 0 and len(self.encoder) and
+        checks all values in keys for where the np.seachsorted 0 is an unknown
+        label. This is probably inefficient and could be improved.
+
         TODO, may be beneficial to include a live updating behavior that when
         an unknown token is encountered, rather than throwing an error if
         unknown_key does not exist, or treating that token as the unknown key,
@@ -426,16 +435,18 @@ class NominalDataEncoder(object):
                 raise ValueError(
                     f'`keys` contains previously unseen keys: {diff}',
                 )
-            else:
-                raise NotImplementedError(' '.join([
-                    f'`keys` contains previously unseen keys: {diff}',
-                    'and unknown_key is provided, but not implremented yet!',
-                ]))
+            #else:
+            #    raise NotImplementedError(' '.join([
+            #        f'`keys` contains previously unseen keys: {diff}',
+            #        'and unknown_key is provided, but not implremented yet!',
+            #    ]))
 
             # TODO XOR allow for updating of the labels in order of occurrence.
             # XOR default is as is, fail if unseen label in encoding.
             #   unknowns = update
             # if update: ...
+
+        shift = self.shift
 
         if keys.dtype == object:
             # Python encode
@@ -446,15 +457,54 @@ class NominalDataEncoder(object):
         # Numpy encode
         elif self.are_keys_sorted:
             # Encoder keys are already sorted within the encoder.
-            # TODO handle masking all unknowns to unknown! Perhaps masked array?
             encoded = np.searchsorted(self.encoder, keys)
+            if self.unknown_idx is not None:
+                # Checks where encoded == len(encoder) or (0 and is unknown)
+                encoded = np.where(
+                    (
+                        (encoded != len(self.encoder))
+                        & ~ (
+                            (encoded == 0)
+                            & (
+                                keys != (
+                                    self.inv[shift + 1]
+                                    if self.unknown_idx == shift
+                                    else self.inv[shift]
+                                )
+                            )
+                        )
+                    ),
+                    encoded,
+                    self.unknown_idx,
+                )
         else:
-            # TODO handle masking all unknowns to unknown! Perhaps masked array?
-            encoded = self.argsorted_keys[np.searchsorted(
+            # Encoder keys are not necessarily sorted w/in encoder.
+            encoded = np.searchsorted(
                 self.encoder,
                 keys,
-                sorter=self.argsorted_keys,
-            )]
+                sorter=self._argsorted_keys,
+            )
+            if self.unknown_idx is None:
+                encoded = self._argsorted_keys[encoded]
+            else:
+                # Checks where encoded == len(encoder) or (0 and is unknown)
+                encoded = self._argsorted_keys[np.where(
+                    (
+                        (encoded != len(self.encoder))
+                        & ~ (
+                            (encoded == 0)
+                            & (
+                                keys != (
+                                    self.inv[shift + 1]
+                                    if self.unknown_idx == shift
+                                    else self.inv[shift]
+                                )
+                            )
+                        )
+                    ),
+                    encoded,
+                    self._argsorted_unknown_idx,
+                )]
 
         if one_hot:
             # TODO beware shift for when a one hot encoding!
@@ -470,7 +520,7 @@ class NominalDataEncoder(object):
             return one_hot_classes[encoded]
             # TODO support changing where the added dimension goes.
         elif keys.dtype != object and self.shift != 0:
-            print(self.shift)
+            logging.debug('shift = %d', self.shift)
             return encoded + self.shift
         return encoded
 
@@ -552,7 +602,7 @@ class NominalDataEncoder(object):
         """Appends the keys to the end of the encoder giving them their
         respective encodings.
         """
-        # TODO handle the update to argsorted_keys, more efficiently
+        # TODO handle the update to _argsorted_keys, more efficiently
         last_enc = next(reversed(self.encoder.inverse))
 
         if (
@@ -567,15 +617,11 @@ class NominalDataEncoder(object):
                     self.encoder[key] = last_enc
 
                     if not self.are_keys_sorted:
-                        # Must update the argsorted_keys for approriate
+                        # Must update the _argsorted_keys for approriate
                         # encoding TODO replace this hotfix cuz this is
                         # inefficient! # TODO unit test this!
-                        #self.argsorted_keys = np.argsort(self.encoder)
-                        unique, self.argsorted_keys = np.unique(
-                            self.encoder,
-                            return_index=True,
-                        )
-
+                        #self._argsorted_keys = np.argsort(self.encoder)
+                        self._update_argsorted_keys(self.encoder)
                 elif ignore_dups:
                     continue
                 else:
@@ -588,14 +634,11 @@ class NominalDataEncoder(object):
                 self.encoder[keys] = last_enc + 1
 
                 if not self.are_keys_sorted:
-                    # Must update the argsorted_keys for approriate encoding
+                    # Must update the _argsorted_keys for approriate encoding
                     # TODO replace this hotfix cuz this is inefficient!
                     # TODO unit test this!
-                    #self.argsorted_keys = np.argsort(self.encoder)
-                    unique, self.argsorted_keys = np.unique(
-                        self.encoder,
-                        return_index=True,
-                    )
+                    #self._argsorted_keys = np.argsort(self.encoder)
+                    self._update_argsorted_keys(self.encoder)
 
             elif ignore_dups:
                 return
@@ -624,8 +667,9 @@ class NominalDataEncoder(object):
 
         if key == self.unknown_key:
             self._unknown_key = None
+            self._argsorted_unknown_idx = None
 
-        # TODO handle the update to argsorted_keys
+        # TODO handle the update to _argsorted_keys
 
         # Handle the shift in encoding if there is any.
         #shift = next(iter(self.encoder.inverse))
@@ -641,30 +685,31 @@ class NominalDataEncoder(object):
         else:
             enc = self.encoder.pop(key)
 
-        print(key, enc)
+        logging.debug('key = `%s`, enc = `%s`', key, enc)
 
         if enc != last_enc:
             # Decrement all following keys by one
             for key in list(self.encoder)[enc - prior_shift:]:
-                print(key, self.encoder[key])
+                logging.debug(
+                    'key = `%s`, encoded key = `%s`',
+                    key,
+                    self.encoder[key],
+                )
                 self.encoder[key] -= 1
 
         if not self.are_keys_sorted:
-            # Must remove the key's respective arg from argsorted_keys
+            # Must remove the key's respective arg from _argsorted_keys
             """ TODO fix
             arg = np.argwhere(np.array(self.encoder) == (
                 self.encoder.inverse[key] if encoding else key
             ))[0][0]
 
-            self.argsorted_keys = np.delete(self.argsorted_keys, arg)
+            self._argsorted_keys = np.delete(self._argsorted_keys, arg)
 
             # adjust the rest of the args accordingly
-            self.argsorted_keys[np.where(self.argsorted_keys > arg)] -= 1
+            self._argsorted_keys[np.where(self._argsorted_keys > arg)] -= 1
             #"""
-            unique, self.argsorted_keys = np.unique(
-                np.array(self.encoder),
-                return_index=True,
-            )
+            self._update_argsorted_keys(self.encoder)
 
         return key if encoding else enc
 

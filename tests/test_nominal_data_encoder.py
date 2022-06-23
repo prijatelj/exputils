@@ -46,7 +46,7 @@ class TestObjectBasics:
         argsorted = np.unique(example_labels, return_index=True)[1]
 
         # Test the argsorted_keys given these example labels
-        assert (nde_1.argsorted_keys == argsorted).all()
+        assert (nde_1._argsorted_keys == argsorted).all()
 
         # Test the default attributes
         assert nde_1.pos_label == 1
@@ -69,7 +69,7 @@ class TestObjectBasics:
 
         # Repeat tests on nde_2 as sanity check for any global changes in init
         # Test the argsorted_keys given these example labels
-        assert (nde_2.argsorted_keys == argsorted).all()
+        assert (nde_2._argsorted_keys == argsorted).all()
 
         # Test the default attributes
         assert nde_2.pos_label == 1
@@ -105,10 +105,10 @@ class TestObjectBasics:
         assert nde_src == nde_copy
 
         # Change an object within one, witness change in the other
-        nde_src.argsorted_keys[0] = -100
+        nde_src._argsorted_keys[0] = -100
         assert nde_src == nde_copy
 
-        nde_copy.argsorted_keys[-1] = -200
+        nde_copy._argsorted_keys[-1] = -200
         assert nde_src == nde_copy
 
         # Change a literal within one, witness no change in the other
@@ -126,14 +126,14 @@ class TestObjectBasics:
         assert nde_src == nde_copy
 
         # Change an object within one, witness no change in the other
-        tmp = nde_src.argsorted_keys[0]
-        nde_src.argsorted_keys[0] = -100
+        tmp = nde_src._argsorted_keys[0]
+        nde_src._argsorted_keys[0] = -100
         assert nde_src != nde_copy
-        nde_src.argsorted_keys[0] = tmp
+        nde_src._argsorted_keys[0] = tmp
         assert nde_src == nde_copy
 
-        tmp = nde_copy.argsorted_keys[-1]
-        nde_copy.argsorted_keys[-1] = -200
+        tmp = nde_copy._argsorted_keys[-1]
+        nde_copy._argsorted_keys[-1] = -200
         assert nde_src != nde_copy
 
     def test_encoder_bidict_methods(self, example_labels):
@@ -461,3 +461,5 @@ class TestUnknownLabel:
     #@pytest.mark.xfail
     #def test_reorder(self):
     #    assert False
+
+    # TODO test unknown encoding of unknown labels. and decoding.
