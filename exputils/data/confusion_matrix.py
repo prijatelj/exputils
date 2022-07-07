@@ -28,16 +28,22 @@ logger = logging.getLogger(__name__)
 class ConfusionMatrix(object):
     """Confusion matrix of occurrences for nominal data.
     Rows are the known labels and columns are the predictions.
+
+    Attributes
+    ----------
+    _mat : np.ndarray
+    label_enc : NominalDataEncoder = None
+    _labels : np.ndarray = None
     """
     def __init__(self, targets, preds=None, labels=None, *args, **kwargs):
         """
         Parameters
         ----------
-        targets : np.ndarray()
+        targets : np.ndarray
             The confusion matrix to wrap, or the target labels.
-        preds : np.ndarray, optional
-        labels : np.ndarray, optional
-            The labels for the row and columns of the confusion matrix
+        preds : np.ndarray = None
+        labels : np.ndarray = None
+            The labels for the row and columns of the confusion matrix.
         """
 
         # TODO Add optional class weights attribute, allowing it to be
@@ -115,6 +121,29 @@ class ConfusionMatrix(object):
             self.mat + other.mat,
             labels=copy(self.labels),
         )
+
+    def join(self, other, method='union', inplace=False):
+        """Joins this Confusion Matrix with another using a set method over
+        their labels.
+
+        Args
+        ----
+        other : ConfusionMatrix
+        method : str = 'union'
+            May be a str identifier of {'union', 'left', 'right', 'intersect',
+            'disjoint'}.
+        inplace : bool = False
+            If True, updates this self instance with the result of joining.
+
+        Returns
+        -------
+        ConfusionMatrix | None
+            The result of joining the two ConfusionMatrix objects if inplace is
+            False, otherwise None.
+        """
+        # TODO align labels
+        return
+
 
     def reduce(self, labels, reduced_label, inverse=False):
         """Reduce confusion matrix to smaller size by mapping labels to one.

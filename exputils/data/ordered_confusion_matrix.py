@@ -139,6 +139,27 @@ class OrderedConfusionMatrices(object):
         """Necessary for checking the changes over increments."""
         raise NotImplementedError()
 
+    def join(self, other, method='union', inplace=False):
+        """Joins this Ordered Confusion Matrix with another using a set method
+        over their labels.
+
+        Args
+        ----
+        other : OrderedConfusionMatrices
+        method : str = 'union'
+            May be a str identifier of {'union', 'left', 'right', 'intersect',
+            'disjoint'}.
+        inplace : bool = False
+            If True, updates this self instance with the result of joining.
+
+        Returns
+        -------
+        OrderedConfusionMatrices | None
+            The result of joining the two OrderedConfusionMatrices objects if
+            inplace is False, otherwise None.
+        """
+        return
+
     def get_conf_mat(self):
         """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
         return ConfusionMatrix(self.tensor[0], labels=np.array(self.label_enc))
