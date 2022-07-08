@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 from scipy.stats import gmean, entropy
+
+# TODO refactor: Use of Sklearn is not necessary. I had to implement top-k cms,
+# this is just top-1
 from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
@@ -31,9 +34,9 @@ class ConfusionMatrix(object):
 
     Attributes
     ----------
-    _mat : np.ndarray
+    mat : np.ndarray
+        The confusion matrix. TODO make mat private marked: _mat
     label_enc : NominalDataEncoder = None
-    _labels : np.ndarray = None
     """
     def __init__(self, targets, preds=None, labels=None, *args, **kwargs):
         """
@@ -66,13 +69,12 @@ class ConfusionMatrix(object):
                 # If given an existing matrix as a confusion matrix
                 self.mat = np.array(targets)
 
-                if isinstance(targets, pd.DataFrame):
-                    self.labels = NDE(targets.columns)
-                elif isinstance(labels, (list, np.ndarray)):
-                    self.labels = np.array(labels)
-                    #self.labels = NDE(labels)
+                if labels is not None:
+                    self.label_enc = NDE(labels)
+                elif isinstance(targets, pd.DataFrame):
+                    self.label_enc = NDE(targets.columns)
                 else:
-                    self.labels = NDE(np.arange(len(self.mat)))
+                    self.label_enc = NDE(np.arange(len(self.mat)))
             else:
                 raise TypeError(' '.join([
                     'targets type is expected to be of type `np.ndarray`, but',
@@ -81,16 +83,16 @@ class ConfusionMatrix(object):
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
             if isinstance(labels, (list, np.ndarray)):
-                self.labels = np.array(labels)
-                #self.labels = NDE(labels)
+                self.label_enc = NDE(labels)
             else:
-                self.labels = np.array(list(set(targets) | set(preds)))
-                #self.labels = NDE(list(set(targets) | set(preds)))
+                self.label_enc = NDE(list(set(targets) | set(preds)))
 
+            # TODO refactor: Use of Sklearn is not necessary. I had to
+            # implement top-k cms, this is just top-1
             self.mat = confusion_matrix(
                 targets,
                 preds,
-                labels=np.array(self.labels),
+                labels=self.labels,
                 *args,
                 **kwargs,
             )
@@ -102,34 +104,22 @@ class ConfusionMatrix(object):
             raise TypeError(
                 'Operator add only supported between two ConfusionMatrices.'
             )
+        return self.join(other, 'left', False)
 
-        if len(self.labels) != len(other.labels):
-            raise ValueError(' '.join([
-                'The two ConfusionMatrices do not have the same number of',
-                'labels!',
-            ]))
-        if all(self.labels != other.labels):
-            if set(self.labels) != set(other.labels):
-                raise ValueError(
-                    'The other ConfusionMatrix does not have the same labels!'
-                )
+    @property
+    def labels(self):
+        if self.label_enc is not None:
+            return np.array(self.label_enc)
 
-            # TODO reorganize other to be added correctly to existing conf mat
-            raise NotImplementedError('Same labels of different order.')
-
-        return ConfusionMatrix(
-            self.mat + other.mat,
-            labels=copy(self.labels),
-        )
-
-    def join(self, other, method='union', inplace=False):
+    def join(self, other, method='left', inplace=False):
         """Joins this Confusion Matrix with another using a set method over
         their labels.
 
         Args
         ----
         other : ConfusionMatrix
-        method : str = 'union'
+        method : str = 'left'
+            Left-preferred  union only atm.
             May be a str identifier of {'union', 'left', 'right', 'intersect',
             'disjoint'}.
         inplace : bool = False
@@ -141,9 +131,48 @@ class ConfusionMatrix(object):
             The result of joining the two ConfusionMatrix objects if inplace is
             False, otherwise None.
         """
-        # TODO align labels
-        return
+        set_self = set(self.label_enc)
+        set_other = set(other.label_enc)
 
+        # TODO consider nominal data enc set operators that ensure order of
+        # left op right, OrderedDict / OrderedBidict cover this?
+        instersect = set_self & set_other
+        right_disjoint = set_other - set_self
+
+        sorted_other_encs = np.sort(other.encode(list(right_disjoint)))
+        self_interesect = self.encode(instersect))
+        other_interesect = other.encode(instersect)
+
+        if inplace:
+            label_enc = self.label_enc
+            mat = self.mat
+        else:
+            label_enc = deepcopy(self.label_enc)
+            mat = self.mat.copy()
+        n_other = len(sorted_other_encs)
+
+        # Add intersection of other mat to self mat
+        mat[self_interesect, self_interesect] += other.mat[
+            other_interesect,
+            other_interesect,
+        ]
+
+        # Add Zeros placeholders for other's disjoint labels
+        mat = np.vstack((
+            np.hstack((mat, np.zeros([mat.shape[0], n_other]))),
+            np.zeros([n_other, mat.shape[1] + n_other]),
+        ))
+        # Update with their values
+        mat[-n_other:, -n_other:] = other.mat[
+            sorted_other_encs,
+            sorted_other_encs
+        ]
+
+        # Add other's disjoint labels to self label encoder
+        label_enc.append(other.decode(sorted_other_encs))
+
+        if inplace:
+            return ConfusionMatrix(mat, labels=label_enc)
 
     def reduce(self, labels, reduced_label, inverse=False):
         """Reduce confusion matrix to smaller size by mapping labels to one.

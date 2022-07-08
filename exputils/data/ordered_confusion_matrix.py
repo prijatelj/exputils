@@ -1,6 +1,7 @@
 """Ordered confusion matricies for calculating top-k measures."""
 import os
 
+from bidict import OrderedBidict
 import h5py
 import numpy as np
 ma = np.ma
@@ -139,7 +140,12 @@ class OrderedConfusionMatrices(object):
         """Necessary for checking the changes over increments."""
         raise NotImplementedError()
 
-    def join(self, other, method='union', inplace=False):
+    @property
+    def labels(self):
+        """Returns labels as a numpy array."""
+        return np.array(self.label_enc.encoder)
+
+    def join(self, other, method='left', inplace=False):
         """Joins this Ordered Confusion Matrix with another using a set method
         over their labels.
 
@@ -158,7 +164,31 @@ class OrderedConfusionMatrices(object):
             The result of joining the two OrderedConfusionMatrices objects if
             inplace is False, otherwise None.
         """
-        return
+        set_self = set(self.label_enc)
+        set_other = set(other.label_enc)
+        # TODO consider nominal data enc set operators that ensure order of
+        # left op right, OrderedDict / OrderedBidict cover this?
+        #instersect = set_self & set_other
+        #left_disjoint = set_self - set_other
+        right_disjoint = set_other - set_self
+
+        sorted_other_encs = np.sort(other.encode(list(right_disjoint)))
+
+        if inplace:
+            label_enc = self.label_enc
+            mat = self.mat
+        else:
+            label_enc = deepcopy(self.label_enc)
+            mat = self.mat.copy()
+
+        mat[len(label_enc):, len(label_enc):] = other.mat[
+            sorted_other_encs,
+            sorted_other_encs
+        ]
+        label_enc.append(other.decode(sorted_other_encs))
+
+        if inplace:
+            return ConfusionMatrix(mat, labels=label_enc)
 
     def get_conf_mat(self):
         """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
