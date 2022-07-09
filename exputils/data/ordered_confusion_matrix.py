@@ -1,4 +1,5 @@
 """Ordered confusion matricies for calculating top-k measures."""
+from copy import deepcopy
 import os
 
 from bidict import OrderedBidict
@@ -136,9 +137,24 @@ class OrderedConfusionMatrices(object):
                 axis=0,
             )
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for key, val in self.__dict__.items():
+            setattr(result, key, deepcopy(val, memo))
+        return result
+
     def __add__(self, other):
-        """Necessary for checking the changes over increments."""
-        raise NotImplementedError()
+        """Add two OrderedConfusionMatrices together if of the same shape w/
+        same label set."""
+        return self.join(other, 'left', False)
 
     @property
     def labels(self):
@@ -146,13 +162,14 @@ class OrderedConfusionMatrices(object):
         return np.array(self.label_enc.encoder)
 
     def join(self, other, method='left', inplace=False):
-        """Joins this Ordered Confusion Matrix with another using a set method
+        """Joins this OrderedConfusionMatricies with another using a set method
         over their labels.
 
         Args
         ----
         other : OrderedConfusionMatrices
-        method : str = 'union'
+        method : str = 'left'
+            Left-preferred  union only atm.
             May be a str identifier of {'union', 'left', 'right', 'intersect',
             'disjoint'}.
         inplace : bool = False
@@ -160,35 +177,67 @@ class OrderedConfusionMatrices(object):
 
         Returns
         -------
-        OrderedConfusionMatrices | None
-            The result of joining the two OrderedConfusionMatrices objects if
-            inplace is False, otherwise None.
+        ConfusionMatrix | None
+            The result of joining the two ConfusionMatrix objects if inplace is
+            False, otherwise None.
         """
+        if not isinstance(other, OrderedConfusionMatrices):
+            raise TypeError(
+                'Operator add only supported between two '
+                'OrderedConfusionMatrices.'
+            )
+        if self.tensor.shape[0] != other.tensor.shape[0]:
+            raise ValueError(
+                "The OrderedConfusionMatrices' tensors dim 0 are not the "
+                'same. Expects same number of top confusion matrices.'
+            )
         set_self = set(self.label_enc)
         set_other = set(other.label_enc)
+
         # TODO consider nominal data enc set operators that ensure order of
         # left op right, OrderedDict / OrderedBidict cover this?
-        #instersect = set_self & set_other
-        #left_disjoint = set_self - set_other
+        intersect = list(set_self & set_other)
         right_disjoint = set_other - set_self
 
-        sorted_other_encs = np.sort(other.encode(list(right_disjoint)))
+        sorted_other_encs = np.sort(other.label_enc.encode(
+            list(right_disjoint))
+        )
+        self_interesect = self.label_enc.encode(intersect)
+        other_interesect = other.label_enc.encode(intersect)
 
         if inplace:
             label_enc = self.label_enc
-            mat = self.mat
+            tensor = self.tensor
         else:
             label_enc = deepcopy(self.label_enc)
-            mat = self.mat.copy()
+            tensor = self.tensor.copy()
+        n_self = len(label_enc)
+        n_other = len(sorted_other_encs)
+        n_total = n_self + n_other
 
-        mat[len(label_enc):, len(label_enc):] = other.mat[
+        # Add intersection of other tensor to self tensor
+        tensor[:, self_interesect, self_interesect] += other.tensor[
+            :,
+            other_interesect,
+            other_interesect,
+        ]
+
+        # Add Zeros placeholders for other's disjoint labels
+        new_tensor = np.zeros([tensor.shape[0], n_total, n_total])
+        # Update with their values
+        new_tensor[:, :-n_other, :-n_other] = tensor
+        disjoint_slice = np.arange(n_self, n_total)
+        new_tensor[:, disjoint_slice, disjoint_slice] = other.tensor[
+            :,
             sorted_other_encs,
             sorted_other_encs
         ]
-        label_enc.append(other.decode(sorted_other_encs))
 
-        if inplace:
-            return ConfusionMatrix(mat, labels=label_enc)
+        # Add other's disjoint labels to self label encoder
+        label_enc.append(other.label_enc.decode(sorted_other_encs))
+
+        if not inplace:
+            return OrderedConfusionMatrices(new_tensor, labels=label_enc)
 
     def get_conf_mat(self):
         """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
