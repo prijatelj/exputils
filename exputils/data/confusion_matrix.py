@@ -3,7 +3,7 @@ calculated and certain metrics need calculated FROM the confusion matrix, add
 __tested__ metrics derived from the confusion matrix for efficient
 computation.
 """
-from copy import copy
+from copy import copy, deepcopy
 import os
 
 import h5py
@@ -97,6 +97,20 @@ class ConfusionMatrix(object):
                 **kwargs,
             )
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for key, val in self.__dict__.items():
+            setattr(result, key, deepcopy(val, memo))
+        return result
+
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
         label set."""
@@ -136,12 +150,14 @@ class ConfusionMatrix(object):
 
         # TODO consider nominal data enc set operators that ensure order of
         # left op right, OrderedDict / OrderedBidict cover this?
-        instersect = set_self & set_other
+        intersect = list(set_self & set_other)
         right_disjoint = set_other - set_self
 
-        sorted_other_encs = np.sort(other.encode(list(right_disjoint)))
-        self_interesect = self.encode(instersect))
-        other_interesect = other.encode(instersect)
+        sorted_other_encs = np.sort(other.label_enc.encode(
+            list(right_disjoint))
+        )
+        self_interesect = self.label_enc.encode(intersect)
+        other_interesect = other.label_enc.encode(intersect)
 
         if inplace:
             label_enc = self.label_enc
@@ -169,9 +185,9 @@ class ConfusionMatrix(object):
         ]
 
         # Add other's disjoint labels to self label encoder
-        label_enc.append(other.decode(sorted_other_encs))
+        label_enc.append(other.label_enc.decode(sorted_other_encs))
 
-        if inplace:
+        if not inplace:
             return ConfusionMatrix(mat, labels=label_enc)
 
     def reduce(self, labels, reduced_label, inverse=False):
