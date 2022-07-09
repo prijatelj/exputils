@@ -114,10 +114,6 @@ class ConfusionMatrix(object):
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
         label set."""
-        if not isinstance(other, ConfusionMatrix):
-            raise TypeError(
-                'Operator add only supported between two ConfusionMatrices.'
-            )
         return self.join(other, 'left', False)
 
     @property
@@ -145,6 +141,10 @@ class ConfusionMatrix(object):
             The result of joining the two ConfusionMatrix objects if inplace is
             False, otherwise None.
         """
+        if not isinstance(other, ConfusionMatrix):
+            raise TypeError(
+                'Operator add only supported between two ConfusionMatrices.'
+            )
         set_self = set(self.label_enc)
         set_other = set(other.label_enc)
 
