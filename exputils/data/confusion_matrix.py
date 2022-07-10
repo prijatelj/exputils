@@ -197,11 +197,11 @@ class ConfusionMatrix(object):
         ))
 
         # Update the submat for other's disjoint labels with their values
-        # First, only other's disjoint sub mat
+        # Other's disjoint only sub mat: disjoint x disjoint
         mat[-n_other:, -n_other:] = \
             other.mat[other_disjoint][:, other_disjoint]
 
-        # Second, other's disjoint labels with those shared, row then col
+        # Other's disjoint x intersect; and intersect x disjoint
         mat[-n_other:, self_intersect] = \
             other.mat[other_disjoint][:, other_intersect]
         mat[self_intersect, -n_other:] = \
