@@ -231,7 +231,7 @@ class OrderedConfusionMatrices(object):
 
         # Update with their values:
         # Self's confusion matrices
-        new_tensor[:, :-n_other, :-n_other] = tensor
+        new_tensor[:, :n_self, :n_self] = tensor
         # Other's disjoint x disjoint
         new_tensor[:, -n_other:, -n_other:] = \
             other.tensor[:, other_disjoint][:, :, other_disjoint]
@@ -245,6 +245,7 @@ class OrderedConfusionMatrices(object):
         label_enc.append(other.label_enc.decode(other_disjoint))
 
         if not inplace:
+            # TODO use copy rather than new init.
             return OrderedConfusionMatrices(new_tensor, labels=label_enc)
         else:
             self.tensor = new_tensor
