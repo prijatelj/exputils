@@ -151,6 +151,8 @@ class OrderedConfusionMatrices(object):
             setattr(result, key, deepcopy(val, memo))
         return result
 
+    # TODO consider nominal data enc set operators that ensure order of
+    # left op right, OrderedDict / OrderedBidict cover this?
     def __add__(self, other):
         """Add two OrderedConfusionMatrices together if of the same shape w/
         same label set."""
@@ -194,16 +196,14 @@ class OrderedConfusionMatrices(object):
         set_self = set(self.label_enc)
         set_other = set(other.label_enc)
 
-        # TODO consider nominal data enc set operators that ensure order of
-        # left op right, OrderedDict / OrderedBidict cover this?
         intersect = list(set_self & set_other)
-        right_disjoint = set_other - set_self
+        self_intersect = self.label_enc.encode(intersect)
+        other_intersect = other.label_enc.encode(intersect)
 
-        sorted_other_encs = np.sort(other.label_enc.encode(
-            list(right_disjoint))
-        )
-        self_interesect = self.label_enc.encode(intersect)
-        other_interesect = other.label_enc.encode(intersect)
+        self_disjoint = self.label_enc.encode(list(set_self - set_other))
+        other_disjoint = np.sort(other.label_enc.encode(
+            list(set_other - set_self)
+        ))
 
         if inplace:
             label_enc = self.label_enc
@@ -212,29 +212,35 @@ class OrderedConfusionMatrices(object):
             label_enc = deepcopy(self.label_enc)
             tensor = self.tensor.copy()
         n_self = len(label_enc)
-        n_other = len(sorted_other_encs)
+        n_other = len(other_disjoint)
         n_total = n_self + n_other
 
-        # Add intersection of other tensor to self tensor
-        tensor[:, self_interesect, self_interesect] += other.tensor[
-            :,
-            other_interesect,
-            other_interesect,
-        ]
+        # Sum the mats together aligned by their shared labels.
+        # First, add across the intersecting rows
+        self_intersect_args = self_intersect.reshape(-1, 1).repeat(
+            self_intersect.shape[0],
+            axis=1,
+        )
+        tensor[:, self_intersect_args, self_intersect_args.T] += \
+            other.tensor[:, other_intersect][:, :, other_intersect]
 
         # Add Zeros placeholders for other's disjoint labels
         new_tensor = np.zeros([tensor.shape[0], n_total, n_total])
-        # Update with their values
+
+        # Update with their values:
+        # Self's confusion matrices
         new_tensor[:, :-n_other, :-n_other] = tensor
-        disjoint_slice = np.arange(n_self, n_total)
-        new_tensor[:, disjoint_slice, disjoint_slice] = other.tensor[
-            :,
-            sorted_other_encs,
-            sorted_other_encs
-        ]
+        # Other's disjoint x disjoint
+        new_tensor[:, -n_other:, -n_other:] = \
+            other.tensor[:, other_disjoint][:, :, other_disjoint]
+        # Other's disjoint x intersect; and intersect x disjoint
+        tensor[:, -n_other:, self_intersect] = \
+            other.tensor[:, other_disjoint][:, :, other_intersect]
+        tensor[:, self_intersect, -n_other:] = \
+            other.tensor[:, other_intersect][:, :, other_disjoint]
 
         # Add other's disjoint labels to self label encoder
-        label_enc.append(other.label_enc.decode(sorted_other_encs))
+        label_enc.append(other.label_enc.decode(other_disjoint))
 
         if not inplace:
             return OrderedConfusionMatrices(new_tensor, labels=label_enc)
