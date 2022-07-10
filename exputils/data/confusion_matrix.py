@@ -111,6 +111,8 @@ class ConfusionMatrix(object):
             setattr(result, key, deepcopy(val, memo))
         return result
 
+    # TODO consider nominal data enc set operators that ensure order of
+    # left op right, OrderedDict / OrderedBidict cover this?
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
         label set."""
@@ -124,6 +126,19 @@ class ConfusionMatrix(object):
     def join(self, other, method='left', inplace=False):
         """Joins this Confusion Matrix with another using a set method over
         their labels.
+
+        Current version always combines with left union. First, we get the
+        intersecting, left (self) disjoint, and right (other) disjoint label
+        sets. Then, we work off of the self mat, adding the intersecting values
+        from other into correct  spot for self mat. Adding to mat, includes
+        the self disjoint label confusion already. To add the other confusion,
+        the original mat is expanded with zeros to append the new labels to the
+        end. This exteneded area includes three different sub matricies to be
+        filled with from the other's mat. The sub mat where only other disjoint
+        label confusion exists, the sub mat for disjoint other confusion with
+        shared labels, and the inverse, shared labels confusion with the
+        disjoint other labels. This covers all the sub mat blocks that from
+        the new resulting confusion matrix.
 
         Args
         ----
@@ -148,16 +163,14 @@ class ConfusionMatrix(object):
         set_self = set(self.label_enc)
         set_other = set(other.label_enc)
 
-        # TODO consider nominal data enc set operators that ensure order of
-        # left op right, OrderedDict / OrderedBidict cover this?
         intersect = list(set_self & set_other)
-        right_disjoint = set_other - set_self
+        self_intersect = self.label_enc.encode(intersect)
+        other_intersect = other.label_enc.encode(intersect)
 
-        sorted_other_encs = np.sort(other.label_enc.encode(
-            list(right_disjoint))
-        )
-        self_interesect = self.label_enc.encode(intersect)
-        other_interesect = other.label_enc.encode(intersect)
+        self_disjoint = self.label_enc.encode(list(set_self - set_other))
+        other_disjoint = np.sort(other.label_enc.encode(
+            list(set_other - set_self)
+        ))
 
         if inplace:
             label_enc = self.label_enc
@@ -165,27 +178,37 @@ class ConfusionMatrix(object):
         else:
             label_enc = deepcopy(self.label_enc)
             mat = self.mat.copy()
-        n_other = len(sorted_other_encs)
+        n_other = len(other_disjoint)
 
-        # Add intersection of other mat to self mat
-        mat[self_interesect, self_interesect] += other.mat[
-            other_interesect,
-            other_interesect,
-        ]
+        # Sum the mats together aligned by their shared labels.
+        # First, add across the intersecting rows
+        self_intersect_args = self_intersect.reshape(-1, 1).repeat(
+            self_intersect.shape[0],
+            axis=1,
+        )
+        mat[self_intersect_args, self_intersect_args.T] += \
+            other.mat[other_intersect][:, other_intersect]
 
+        # Next, Expand mat to include other's disjoint labels.
         # Add Zeros placeholders for other's disjoint labels
         mat = np.vstack((
             np.hstack((mat, np.zeros([mat.shape[0], n_other]))),
             np.zeros([n_other, mat.shape[1] + n_other]),
         ))
-        # Update with their values
-        mat[-n_other:, -n_other:] = other.mat[
-            sorted_other_encs,
-            sorted_other_encs
-        ]
+
+        # Update the submat for other's disjoint labels with their values
+        # First, only other's disjoint sub mat
+        mat[-n_other:, -n_other:] = \
+            other.mat[other_disjoint][:, other_disjoint]
+
+        # Second, other's disjoint labels with those shared, row then col
+        mat[-n_other:, self_intersect] = \
+            other.mat[other_disjoint][:, other_intersect]
+        mat[self_intersect, -n_other:] = \
+            other.mat[other_intersect][:, other_disjoint]
 
         # Add other's disjoint labels to self label encoder
-        label_enc.append(other.label_enc.decode(sorted_other_encs))
+        label_enc.append(other.label_enc.decode(other_disjoint))
 
         if not inplace:
             return ConfusionMatrix(mat, labels=label_enc)
