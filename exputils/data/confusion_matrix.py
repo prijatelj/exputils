@@ -211,6 +211,7 @@ class ConfusionMatrix(object):
         label_enc.append(other.label_enc.decode(other_disjoint))
 
         if not inplace:
+            # TODO use copy rather than new init.
             return ConfusionMatrix(mat, labels=label_enc)
 
     def reduce(self, labels, reduced_label, inverse=False):
