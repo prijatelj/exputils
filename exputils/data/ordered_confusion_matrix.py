@@ -200,7 +200,7 @@ class OrderedConfusionMatrices(object):
         self_intersect = self.label_enc.encode(intersect)
         other_intersect = other.label_enc.encode(intersect)
 
-        self_disjoint = self.label_enc.encode(list(set_self - set_other))
+        #self_disjoint = self.label_enc.encode(list(set_self - set_other))
         other_disjoint = np.sort(other.label_enc.encode(
             list(set_other - set_self)
         ))
