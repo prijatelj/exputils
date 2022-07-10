@@ -90,11 +90,9 @@ class OrderedConfusionMatrices(object):
                 and targets.shape[1] == targets.shape[2]
             ):
                 self.tensor = targets
-                if top_k is None:
-                    self.top_k = targets.shape[0]
-                else:
+                if top_k is not None:
                     raise ValueError(
-                        'top_k given when targets is the ordered confusoin '
+                        'top_k given when targets is the ordered confusion '
                         'matrices.'
                     )
 
@@ -162,6 +160,10 @@ class OrderedConfusionMatrices(object):
     def labels(self):
         """Returns labels as a numpy array."""
         return np.array(self.label_enc.encoder)
+
+    @property
+    def top_k(self):
+        return self.tensor.shape[0]
 
     def join(self, other, method='left', inplace=False):
         """Joins this OrderedConfusionMatricies with another using a set method
