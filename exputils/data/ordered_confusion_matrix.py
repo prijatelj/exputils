@@ -234,9 +234,9 @@ class OrderedConfusionMatrices(object):
         new_tensor[:, -n_other:, -n_other:] = \
             other.tensor[:, other_disjoint][:, :, other_disjoint]
         # Other's disjoint x intersect; and intersect x disjoint
-        tensor[:, -n_other:, self_intersect] = \
+        new_tensor[:, -n_other:, self_intersect] = \
             other.tensor[:, other_disjoint][:, :, other_intersect]
-        tensor[:, self_intersect, -n_other:] = \
+        new_tensor[:, self_intersect, -n_other:] = \
             other.tensor[:, other_intersect][:, :, other_disjoint]
 
         # Add other's disjoint labels to self label encoder
@@ -244,6 +244,8 @@ class OrderedConfusionMatrices(object):
 
         if not inplace:
             return OrderedConfusionMatrices(new_tensor, labels=label_enc)
+        else:
+            self.tensor = new_tensor
 
     def get_conf_mat(self):
         """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
