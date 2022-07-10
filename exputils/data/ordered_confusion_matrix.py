@@ -232,14 +232,15 @@ class OrderedConfusionMatrices(object):
         # Update with their values:
         # Self's confusion matrices
         new_tensor[:, :n_self, :n_self] = tensor
-        # Other's disjoint x disjoint
-        new_tensor[:, -n_other:, -n_other:] = \
-            other.tensor[:, other_disjoint][:, :, other_disjoint]
-        # Other's disjoint x intersect; and intersect x disjoint
-        new_tensor[:, -n_other:, self_intersect] = \
-            other.tensor[:, other_disjoint][:, :, other_intersect]
-        new_tensor[:, self_intersect, -n_other:] = \
-            other.tensor[:, other_intersect][:, :, other_disjoint]
+        if n_other > 0:
+            # Other's disjoint x disjoint
+            new_tensor[:, -n_other:, -n_other:] = \
+                other.tensor[:, other_disjoint][:, :, other_disjoint]
+            # Other's disjoint x intersect; and intersect x disjoint
+            new_tensor[:, -n_other:, self_intersect] = \
+                other.tensor[:, other_disjoint][:, :, other_intersect]
+            new_tensor[:, self_intersect, -n_other:] = \
+                other.tensor[:, other_intersect][:, :, other_disjoint]
 
         # Add other's disjoint labels to self label encoder
         label_enc.append(other.label_enc.decode(other_disjoint))
