@@ -307,7 +307,11 @@ class ConfusionMatrix(object):
 
         # TODO implement: Ensure reduced label is at location in encoder
         assert reduced_label in new_cm.label_enc
-        assert reduced_label == new_cm.label_enc.encode([reduced_label])[0]
+        reduced_label_enc = new_cm.label_enc.encode([reduced_label])[0]
+        if reduced_idx == -1:
+            assert len(new_cm.label_enc) == reduced_label_enc
+        else:
+            assert reduced_idx == reduced_label_enc
 
         if inplace:
             return new_cm
