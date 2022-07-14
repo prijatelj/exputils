@@ -126,7 +126,7 @@ class NominalDataEncoder(object):
         The negative label to use when binarizing or one hot encoding.
     sparse_output : bool = False
         ??? same as scikit LabelBinarizer learn atm.
-    unknown_key : str = None
+    _unknown_key : str = None
         The key used for an unknown label, especially in encoding of unknown
         or other labels not contained within the encoder. When this is None,
         the default, no handling of unknowns is supported by this encoder.
