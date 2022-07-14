@@ -253,7 +253,7 @@ class OrderedConfusionMatrices(object):
 
     def get_conf_mat(self):
         """Returns the top-1 ConfusionMatrix, the first matrix in tensor."""
-        return ConfusionMatrix(self.tensor[0], labels=np.array(self.label_enc))
+        return ConfusionMatrix(self.tensor[0], labels=self.label_enc)
 
     # TODO obtain BinaryTopKConfusionMatrix / Tensor and its associated
     # measures.

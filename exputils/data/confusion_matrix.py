@@ -69,7 +69,9 @@ class ConfusionMatrix(object):
                 # If given an existing matrix as a confusion matrix
                 self.mat = np.array(targets)
 
-                if labels is not None:
+                if isinstance(labels, NDE):
+                    self.label_enc = labels
+                elif labels is not None:
                     self.label_enc = NDE(labels)
                 elif isinstance(targets, pd.DataFrame):
                     self.label_enc = NDE(targets.columns)
