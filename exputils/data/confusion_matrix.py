@@ -172,12 +172,7 @@ class ConfusionMatrix(object):
             list(set_other - set_self)
         ))
 
-        if inplace:
-            label_enc = self.label_enc
-            mat = self.mat
-        else:
-            label_enc = deepcopy(self.label_enc)
-            mat = self.mat.copy()
+        new_cm = self if inplace else deepcopy(self)
         n_other = len(other_disjoint)
 
         # Sum the mats together aligned by their shared labels.
@@ -186,36 +181,42 @@ class ConfusionMatrix(object):
             self_intersect.shape[0],
             axis=1,
         )
-        mat[self_intersect_args, self_intersect_args.T] += \
+        new_cm.mat[self_intersect_args, self_intersect_args.T] += \
             other.mat[other_intersect][:, other_intersect]
 
         # Next, Expand mat to include other's disjoint labels.
         # Add Zeros placeholders for other's disjoint labels
-        mat = np.vstack((
-            np.hstack((mat, np.zeros([mat.shape[0], n_other]))),
-            np.zeros([n_other, mat.shape[1] + n_other]),
+        new_cm.mat = np.vstack((
+            np.hstack((new_cm.mat, np.zeros([new_cm.mat.shape[0], n_other]))),
+            np.zeros([n_other, new_cm.mat.shape[1] + n_other]),
         ))
 
         # Update the submat for other's disjoint labels with their values
         # Other's disjoint only sub mat: disjoint x disjoint
         if n_other > 0:
-            mat[-n_other:, -n_other:] = \
+            new_cm.mat[-n_other:, -n_other:] = \
                 other.mat[other_disjoint][:, other_disjoint]
 
             # Other's disjoint x intersect; and intersect x disjoint
-            mat[-n_other:, self_intersect] = \
+            new_cm.mat[-n_other:, self_intersect] = \
                 other.mat[other_disjoint][:, other_intersect]
-            mat[self_intersect, -n_other:] = \
+            new_cm.mat[self_intersect, -n_other:] = \
                 other.mat[other_intersect][:, other_disjoint]
 
         # Add other's disjoint labels to self label encoder
-        label_enc.append(other.label_enc.decode(other_disjoint))
+        new_cm.label_enc.append(other.label_enc.decode(other_disjoint))
 
         if not inplace:
-            # TODO use copy rather than new init.
-            return ConfusionMatrix(mat, labels=label_enc)
+            return new_cm
 
-    def reduce(self, labels, reduced_label, inverse=False):
+    def reduce(
+        self,
+        labels,
+        reduced_label,
+        inverse=False,
+        inplace=False,
+        reduced_idx=-1,
+    ):
         """Reduce confusion matrix to smaller size by mapping labels to one.
 
         Parameters
@@ -229,12 +230,22 @@ class ConfusionMatrix(object):
         inverse : bool, optional
             If True, all of the labels in the confusion matrix NOT in `labels`
             are reduced instead.
+        reduced_idx : int = -1
+            Integer index of where to put the reduced label. Currently only 0
+            and -1 are supported for beginning or end respectively.
+            TODO support if reduced_label in labels, use that index.
 
         Returns
         -------
         ConfusionMatrix
             The resulting reduced confusion matrix.
         """
+        if reduced_idx not in {0, -1}:
+            raise NotImplementedError(
+                'Support for reduced_idx being an integer within [0, '
+                'len(self.labels)] is not yet supported. Please use 0 for '
+                'beginning and -1 for the end.'
+            )
         if inverse:
             if reduced_label in self.labels and reduced_label in labels:
                 labels = np.delete(
@@ -257,7 +268,8 @@ class ConfusionMatrix(object):
         else:
             not_mask = np.logical_not(mask)
 
-        # Construct reduced st reduced label is last index
+        # Construct reduced s.t. reduced label is last index
+        # TODO check if np.block is 1) more readable, 2) more efficient.
         reduced_cm = np.vstack((
             np.hstack((
                 self.mat[not_mask][:, not_mask],
@@ -269,10 +281,33 @@ class ConfusionMatrix(object):
             )),
         ))
 
-        return ConfusionMatrix(
-            reduced_cm,
-            labels=np.append(self.labels[not_mask], reduced_label),
-        )
+        # TODO General change location of reduced label, not just to beginning
+
+        new_cm = self if inplace else deepcopy(self)
+        new_cm.mat = reduced_cm
+
+        # Update new label encoder.
+        for label in labels[mask]:
+            new_cm.label_enc.pop(label)
+
+        #labels=np.append(self.labels[not_mask], reduced_label),
+        #if reduced_idx != -1:
+        #    if reduced_label not in new_cm.label_enc:
+        #        new_cm.label_enc.append(reduced_label)
+        if reduced_idx == 0:
+            # TODO if reduced_label not in new_cm.label_enc:
+            # Move from last index to first.
+            new_cm.mat = np.block((
+                (new_cm.mat[[-1], [-1]], new_cm.mat[-1, :-1]),
+                (new_cm.mat[:-1, [-1]], new_cm.mat[:-1, :-1]),
+            ))
+
+        # TODO implement: Ensure reduced label is at location in encoder
+        assert reduced_label in new_cm.label_enc
+        assert reduced_label == new_cm.label_enc.encode([reduced_label])[0]
+
+        if inplace:
+            return new_cm
 
     # TODO methods for the metrics able to be derived from the confusion matrix
     # f score (1 and beta)
