@@ -598,6 +598,8 @@ class NominalDataEncoder(object):
             for key in self.encoder:
                 self.encoder[key] += shift
 
+    # TODO insert(key, idx): insert key at idx, moving everything at idx down 1
+
     def append(self, keys, ignore_dups=False):
         """Appends the keys to the end of the encoder giving them their
         respective encodings.
@@ -622,9 +624,7 @@ class NominalDataEncoder(object):
                         # inefficient! # TODO unit test this!
                         #self._argsorted_keys = np.argsort(self.encoder)
                         self._update_argsorted_keys(self.encoder)
-                elif ignore_dups:
-                    continue
-                else:
+                elif not ignore_dups:
                     raise KeyError(
                         f'Given key `{key}` is already in the NominalDecoder!',
                     )
@@ -639,10 +639,7 @@ class NominalDataEncoder(object):
                     # TODO unit test this!
                     #self._argsorted_keys = np.argsort(self.encoder)
                     self._update_argsorted_keys(self.encoder)
-
-            elif ignore_dups:
-                return
-            else:
+            elif not ignore_dups:
                 raise KeyError(
                     f'Given key `{keys}` is already in the NominalDecoder!',
                 )
