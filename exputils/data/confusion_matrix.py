@@ -256,7 +256,7 @@ class ConfusionMatrix(object):
             if reduced_label in self.labels and reduced_label not in labels:
                 labels = np.append(labels, reduced_label)
 
-        # TODO the use of the nominal label encoder would be good here.
+        # TODO perhaps the use of the nominal label encoder would be good here.
         mask = np.zeros(len(self.labels)).astype(bool)
         for label in labels:
             mask |= self.labels == label
@@ -287,8 +287,9 @@ class ConfusionMatrix(object):
         new_cm.mat = reduced_cm
 
         # Update new label encoder.
-        for label in labels[mask]:
-            new_cm.label_enc.pop(label)
+        for label in np.array(new_cm.label_enc)[mask]:
+            if label != reduced_label:
+                new_cm.label_enc.pop(label)
 
         #labels=np.append(self.labels[not_mask], reduced_label),
         #if reduced_idx != -1:
@@ -297,10 +298,10 @@ class ConfusionMatrix(object):
         if reduced_idx == 0:
             # TODO if reduced_label not in new_cm.label_enc:
             # Move from last index to first.
-            new_cm.mat = np.block((
-                (new_cm.mat[[-1], [-1]], new_cm.mat[-1, :-1]),
-                (new_cm.mat[:-1, [-1]], new_cm.mat[:-1, :-1]),
-            ))
+            new_cm.mat = np.block([
+                [new_cm.mat[[-1], [-1]], new_cm.mat[-1, :-1]],
+                [new_cm.mat[:-1, [-1]], new_cm.mat[:-1, :-1]],
+            ])
 
         # TODO implement: Ensure reduced label is at location in encoder
         assert reduced_label in new_cm.label_enc
