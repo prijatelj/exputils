@@ -226,6 +226,7 @@ class NominalDataEncoder(object):
         })
 
         # Handle all unknown key internal state and checks
+        # TODO create method: self.set_unknown(key, idx)
         self._unknown_key = unknown_key
         if unknown_key is not None:
             """
@@ -340,7 +341,7 @@ class NominalDataEncoder(object):
         unique, self._argsorted_keys = np.unique(keys, return_index=True)
         if self.unknown_key is not None:
             self._argsorted_unknown_idx = np.flatnonzero(
-                unique == self.unknown_key
+                [uni == self.unknown_key for uni in unique]
             )[0]
 
     @property
