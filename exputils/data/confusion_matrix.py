@@ -309,7 +309,7 @@ class ConfusionMatrix(object):
         assert reduced_label in new_cm.label_enc
         reduced_label_enc = new_cm.label_enc.encode([reduced_label])[0]
         if reduced_idx == -1:
-            assert len(new_cm.label_enc) == reduced_label_enc
+            assert len(new_cm.label_enc) - 1 == reduced_label_enc
         else:
             assert reduced_idx == reduced_label_enc
 
