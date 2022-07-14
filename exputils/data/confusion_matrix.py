@@ -294,10 +294,10 @@ class ConfusionMatrix(object):
                 new_cm.label_enc.pop(label)
 
         #labels=np.append(self.labels[not_mask], reduced_label),
-        #if reduced_idx != -1:
-        #    if reduced_label not in new_cm.label_enc:
-        #        new_cm.label_enc.append(reduced_label)
-        if reduced_idx == 0:
+        if reduced_idx == -1:
+            if reduced_label not in new_cm.label_enc:
+                new_cm.label_enc.append(reduced_label)
+        elif reduced_idx == 0:
             # TODO if reduced_label not in new_cm.label_enc:
             # Move from last index to first.
             new_cm.mat = np.block([
