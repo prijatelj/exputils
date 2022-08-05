@@ -315,7 +315,7 @@ class ConfusionMatrix(object):
         else:
             assert reduced_idx == reduced_label_enc
 
-        if inplace:
+        if not inplace:
             return new_cm
 
     # TODO methods for the metrics able to be derived from the confusion matrix
