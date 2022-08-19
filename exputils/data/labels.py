@@ -611,6 +611,7 @@ class NominalDataEncoder(object):
         if (
             isinstance(keys, list)
             or isinstance(keys, tuple)
+            or isinstance(keys, set)
             or isinstance(keys, np.ndarray)
         ):
             # Add the multiple keys to the encoder in order.
@@ -683,16 +684,16 @@ class NominalDataEncoder(object):
         else:
             enc = self.encoder.pop(key)
 
-        logging.debug('key = `%s`, enc = `%s`', key, enc)
+        #logging.debug('key = `%s`, enc = `%s`', key, enc)
 
         if enc != last_enc:
             # Decrement all following keys by one
             for key in list(self.encoder)[enc - prior_shift:]:
-                logging.debug(
-                    'key = `%s`, encoded key = `%s`',
-                    key,
-                    self.encoder[key],
-                )
+                #logging.debug(
+                #    'key = `%s`, encoded key = `%s`',
+                #    key,
+                #    self.encoder[key],
+                #)
                 self.encoder[key] -= 1
 
         if not self.are_keys_sorted:
