@@ -85,7 +85,7 @@ class ConfusionMatrix(object):
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
             if isinstance(labels, NDE):
-                self.label_enc = NDE(labels)
+                self.label_enc = labels
             elif isinstance(labels, (list, np.ndarray, dict)):
                 self.label_enc = NDE(labels)
             else:
