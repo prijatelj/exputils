@@ -146,7 +146,7 @@ class NominalDataEncoder(object):
     """
     def __init__(
         self,
-        ordered_keys,
+        ordered_keys=None,
         shift=0,
         pos_label=1,
         neg_label=0,
@@ -185,6 +185,8 @@ class NominalDataEncoder(object):
             this keeps unknown consistently at the same indedx, regardless of
             prior or future known classes.
         """
+        if ordered_keys is None:
+            ordered_keys = []
         if not ignore_dups and len(set(ordered_keys)) != len(ordered_keys):
             raise ValueError('There are duplicates in the given sequence')
 
@@ -411,6 +413,8 @@ class NominalDataEncoder(object):
         update the encoder to include this new token. Could be a bool param
         `update` that defaults to False here.
         """
+        if len(self) == 0:
+            raise ValueError('NominalDataEncoder is empty. Unable to encode.')
         if one_hot:
             try:
                 return label_binarize(
@@ -549,6 +553,8 @@ class NominalDataEncoder(object):
             Same shape as input encodings, but with elements changed to the
             proper encoding.
         """
+        if len(self) == 0:
+            raise ValueError('NominalDataEncoder is empty. Unable to decode.')
         if isinstance(one_hot_axis, int):
             # TODO check encodings.shape to expected shape
             encodings = encodings.argmax(axis=one_hot_axis)
@@ -579,6 +585,8 @@ class NominalDataEncoder(object):
         shift : int
             shifts all encodings by this constant integer.
         """
+        if len(self) == 0:
+            raise ValueError('NominalDataEncoder is empty, nothing to shift.')
         if not isinstance(shift, int):
             raise TypeError(' '.join([
                 'Expected `adjustment` to be type `int`, not',
@@ -606,7 +614,10 @@ class NominalDataEncoder(object):
         respective encodings.
         """
         # TODO handle the update to _argsorted_keys, more efficiently
-        last_enc = next(reversed(self.encoder.inverse))
+        if len(self) == 0:
+            last_enc = -1
+        else:
+            last_enc = next(reversed(self.encoder.inverse))
 
         if (
             isinstance(keys, list)
@@ -663,7 +674,8 @@ class NominalDataEncoder(object):
         # shifting the array and index mapping done automatically... but then
         # again, iirc, the index mapping runs into a similar issue wrt to
         # getting the index of the keys.
-
+        if len(self) == 0:
+            raise KeyError(f'{key}')
         if key == self.unknown_key:
             self._unknown_key = None
             self._argsorted_unknown_idx = None
@@ -721,6 +733,8 @@ class NominalDataEncoder(object):
         """Saves the labels as an ordered list where the index is implied by
         the order of the labels.
         """
+        if len(self) == 0:
+            raise ValueError('NominalDataEncoder is empty, nothing to save.')
         if sep is None:
             with open(filepath, 'w') as openf:
                 openf.write('\n'.join([str(x) for x in self.encoder]))
