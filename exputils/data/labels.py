@@ -619,11 +619,9 @@ class NominalDataEncoder(object):
         else:
             last_enc = next(reversed(self.encoder.inverse))
 
-        if (
-            isinstance(keys, list)
-            or isinstance(keys, tuple)
-            or isinstance(keys, set)
-            or isinstance(keys, np.ndarray)
+        if isinstance(
+            keys,
+            (list, tuple, set, np.ndarray, NominalDataEncoder),
         ):
             # Add the multiple keys to the encoder in order.
             for key in keys:
