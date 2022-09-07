@@ -75,9 +75,10 @@ class OrderedConfusionMatrices(object):
         labels : list = None
         top_k : int = None
         targets_idx : bool = True
-            If True (default), casts the targets to their index encoding.
-            The calculation of the top k-th confusion matrix is dependent upon
-            the use of integer index encoding representaiton of the symbols.
+            If True (default), the labels are in their index encoding. Else
+            (False) casts the targets to their index encoding.  The calculation
+            of the top k-th confusion matrix is dependent upon the use of
+            integer index encoding representaiton of the symbols.
         """
         # TODO generalize about axis, esp in the k loop of unique indices
         #axis = 1
@@ -100,6 +101,8 @@ class OrderedConfusionMatrices(object):
                     raise ValueError(
                         'OrderedConfusionMatrices without labels!'
                     )
+                elif isinstance(labels, NDE):
+                    self.label_enc = labels
                 else:
                     self.label_enc = NDE(labels)
         else:
@@ -110,13 +113,15 @@ class OrderedConfusionMatrices(object):
 
             if labels is None:
                 self.label_enc = NDE(list(set(targets) | set(preds)))
+            elif isinstance(labels, NDE):
+                self.label_enc = labels
             else:
                 self.label_enc = NDE(labels)
 
             n_classes = len(self.label_enc)
             assert(preds.shape[1] == n_classes)
 
-            # Get top-k predictions, assuming prediction
+            # Get top-k predictions, assuming prediction is of shape [N, C]
             top_preds = np.argsort(preds, axis=1)[:, ::-1][:, :top_k]
 
             # Cast both targets and preds to their args for a confusion matrix
