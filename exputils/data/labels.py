@@ -465,19 +465,14 @@ class NominalDataEncoder(object):
             encoded = np.searchsorted(self.encoder, keys)
             if self.unknown_idx is not None:
                 # Checks where encoded == len(encoder) or (0 and is unknown)
-                # TODO this uses unknown_idx but it should be None
+                # Assigns unknown idx to that position, this handles the case
+                # of ordered elements being less than all values or greater
                 encoded = np.where(
                     (
-                        (encoded != len(self.encoder))
-                        & ~ (
+                        (encoded != len(self.encoder)) # Not unknown greater
+                        & ~ ( # Not unknown lesser (at beginning)
                             (encoded == 0)
-                            & (
-                                keys != (
-                                    self.inv[shift + 1]
-                                    if self.unknown_idx == shift
-                                    else self.inv[shift]
-                                )
-                            )
+                            & (keys == self.inv[shift])
                         )
                     ),
                     encoded,
@@ -494,20 +489,14 @@ class NominalDataEncoder(object):
                 encoded = self._argsorted_keys[encoded]
             else:
                 # Checks where encoded == len(encoder) or (0 and is unknown)
-                # Assigns unknown idx to that position, this handles
-                # TODO thus this inherently assumes unknown_idx == 0
+                # Assigns unknown idx to that position, this handles the case
+                # of ordered elements being less than all values or greater
                 encoded = self._argsorted_keys[np.where(
                     (
-                        (encoded != len(self.encoder))
-                        & ~ (
+                        (encoded != len(self.encoder)) # Not unknown greater
+                        & ~ ( # Not unknown lesser (at beginning)
                             (encoded == 0)
-                            & (
-                                keys != (
-                                    self.inv[shift + 1]
-                                    if self.unknown_idx == shift
-                                    else self.inv[shift]
-                                )
-                            )
+                            & (keys == self.inv[shift])
                         )
                     ),
                     encoded,
@@ -528,7 +517,7 @@ class NominalDataEncoder(object):
             return one_hot_classes[encoded]
             # TODO support changing where the added dimension goes.
         elif keys.dtype != object and self.shift != 0:
-            logging.debug('shift = %d', self.shift)
+            logger.debug('shift = %d', self.shift)
             return encoded + self.shift
         return encoded
 
@@ -697,12 +686,12 @@ class NominalDataEncoder(object):
         else:
             enc = self.encoder.pop(key)
 
-        #logging.debug('key = `%s`, enc = `%s`', key, enc)
+        #logger.debug('key = `%s`, enc = `%s`', key, enc)
 
         if enc != last_enc:
             # Decrement all following keys by one
             for key in list(self.encoder)[enc - prior_shift:]:
-                #logging.debug(
+                #logger.debug(
                 #    'key = `%s`, encoded key = `%s`',
                 #    key,
                 #    self.encoder[key],
