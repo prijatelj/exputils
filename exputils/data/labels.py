@@ -465,6 +465,7 @@ class NominalDataEncoder(object):
             encoded = np.searchsorted(self.encoder, keys)
             if self.unknown_idx is not None:
                 # Checks where encoded == len(encoder) or (0 and is unknown)
+                # TODO this uses unknown_idx but it should be None
                 encoded = np.where(
                     (
                         (encoded != len(self.encoder))
@@ -483,7 +484,7 @@ class NominalDataEncoder(object):
                     self.unknown_idx,
                 )
         else:
-            # Encoder keys are not necessarily sorted w/in encoder.
+            # Encoder keys are not necessarily lexically sorted w/in encoder.
             encoded = np.searchsorted(
                 self.encoder,
                 keys,
@@ -493,6 +494,8 @@ class NominalDataEncoder(object):
                 encoded = self._argsorted_keys[encoded]
             else:
                 # Checks where encoded == len(encoder) or (0 and is unknown)
+                # Assigns unknown idx to that position, this handles
+                # TODO thus this inherently assumes unknown_idx == 0
                 encoded = self._argsorted_keys[np.where(
                     (
                         (encoded != len(self.encoder))
