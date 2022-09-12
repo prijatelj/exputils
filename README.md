@@ -1,35 +1,42 @@
 ## Exputils: Experiment Utilities for Expediency
 
-Convenient scripts and functions that are commonly used in code for running experiments, specifically machine learning experiments.
-This project is intended to expedite the research coding process.
+A toolkit of convenient scripts and functions that are commonly used in my (Derek Prijatelj's) code for running experiments, specifically machine learning experiments.
+This project is intended to expedite the research coding process by serving as a toolkit.
+Though if a tool is developed enough, it may be split up into its own package.
 
 The main components are:
 
-- io: nest namespaces in argparse, ease of saving JSONs, default arg parser, logging, and eventually profiling helpers (e.g. runtime at least)
+- io: nest namespaces in argparse, default arg parser, ease of saving JSONs, logging, and eventually profiling helpers (e.g. runtime at least)
+    - [docstr](https://github.com/prijatelj/docstr) and soon to be [typing-to-configargparse](https://github.com/prijatelj/typing-to-configargparse) as well, provide the argparse tools now and further development is done through them.
 - data: kfold cv wrapper and abstract data class
 - visuals: Visualization scripts for common plots via pyplot
 
 ### Design Principles
 
-- Keep it simple
+1. Write once
+    - reduce redundant code and the need for rewriting code for the same functionality.
+2. Keep it simple
     - and functional
-- Write once
-    - reduce redundant code and make it so common code does not need be rewritten for the same functionality.
-- Modularity
+3. Modularity
     - Keep as modular as possible such that each unit may be removed, replaced, or taken and plugged into a different system.
-- Efficiency
+4. Efficiency
     - efficient coding and execution
 
 ### Features
 
 - exputils.data
     - Confusion matrix: streamlines obtaining, modifying, combining, deriving summary measures, saving/loading, and visualizing of confusion matrices.
+    - Ordered Confusion Tensor, really ordered confusion matrices to get top-k measures, such as top-5 accuracy, as well as get the original confusion matrix.
+        Essentially, storing the order of class predictions over all samples.
     - exputils.data.handlers
 - exputils.io
+    - basic conveniences for input and output, mostly for creating a filepath and making a new unique name if it already exists by appending datetime to it.
 - exputils.ml
-- exputils.profile
-- exputils.ray
-- exputils.visuals
+    - just generic class structure, mostly for reference.
+- [-TODO-]
+    - exputils.profile
+    - exputils.ray
+    - exputils.visuals
 
 
 #### TODO
@@ -46,8 +53,8 @@ The main components are:
 
 ### Verisoning
 
-Docstr uses [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
-Docstr's version will remain < 1.0.0 until adequate unit test coverage exists.
+Exputils uses [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+Exputils's version will remain < 1.0.0 until adequate unit test coverage exists.
 
 ### License
 

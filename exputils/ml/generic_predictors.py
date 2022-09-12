@@ -84,6 +84,12 @@ class SupervisedClassifier(SupervisedLearner):
     # created when first fit occurs (implies unable to predict in this case).
 
     def __init__(self, *args, **kwargs):
+        """Initialize a supervised classifier with a nominal data encoder.
+
+        Args
+        ----
+        see NominalDataEncoder.__init__
+        """
         self.label_enc = NominalDataEncoder(*args, **kwargs)
 
     @property
