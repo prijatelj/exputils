@@ -191,7 +191,7 @@ class TestLabelEncoder:
         nde = NDE(example_labels, shift=shift, unknown_key=unknown_key)
 
         if unknown_key not in {None, '0'}:
-            example_labels = tuple(['unknown'] + list(example_labels))
+            example_labels = tuple([unknown_key] + list(example_labels))
 
         ref_labels = np.array(example_labels)
         n_labels = len(example_labels)
