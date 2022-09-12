@@ -166,7 +166,7 @@ class TestObjectBasics:
         assert nde.inv is nde.encoder.inverse
 
 
-@pytest.mark.dependency(name='encoder_knowns', depends=['object_basics'])
+@pytest.mark.dependency(name='encoder', depends=['object_basics'])
 class TestLabelEncoder:
     @pytest.mark.parametrize(
         'one_hot,shift,unknown_key',
