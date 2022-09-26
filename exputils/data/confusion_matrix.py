@@ -45,7 +45,7 @@ class ConfusionMatrix(object):
         targets : np.ndarray
             The confusion matrix to wrap, or the target labels.
         preds : np.ndarray = None
-        labels : np.ndarray = None
+        labels : np.ndarray | NominalDataEncoder = None
             The labels for the row and columns of the confusion matrix.
         """
 
