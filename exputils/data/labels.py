@@ -2,11 +2,16 @@
 from copy import deepcopy
 from itertools import islice
 import numbers
+import os
+import re
 
 from bidict import OrderedBidict, MutableBidict
+import h5py
 import numpy as np
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.validation import _num_samples as n_samples
+
+from exputils.io import create_filepath
 
 import logging
 logger = logging.getLogger(__name__)
@@ -112,14 +117,15 @@ class NominalDataEncoder(object):
     encoder : OrderedBidict
         The bidirectional mapping of nominal value to integer encoding. There
         can be no multiple keyes that map to the same values.
-    _argsorted_keys : list = None
-        np.ndarray(int) = None
+    _argsorted_keys : np.ndarray(int) = None
         When the keys in the encoder are not sorted, but instead saved in the
         order they are given, then _argsorted_keys is an array of the indices
         of the encoder keys in sorted order. This is necessary for encoding
         using numpy only when the keys are not sorted when saved into the
         encoder. If the keys are sorted when the encoder is created, then this
         is None.
+
+    self._argsorted_unknown_idx : int = None
     pos_label : int = 1
         The positive label to use when binarizing or one hot encoding.
     neg_label : int = 0
@@ -719,23 +725,79 @@ class NominalDataEncoder(object):
 
     # TODO consider an insert_after(), inplace of a append() then reorder()
 
-    def save(self, filepath, sep=None):
+    def save_h5(self, h5, overwrite=False):
+        close = isinstance(h5, str)
+        if close:
+            h5 = h5py.File(create_filepath(h5, overwrite), 'w')
+
+        # Complete save of state with the init kwargs as attrs
+        for key, val in dict(
+            shift=self.shift,
+            pos_label=self.pos_label,
+            neg_label=self.neg_label,
+            sparse_output=self.sparse_output,
+            unknown_key=self.unknown_key,
+            unknown_idx=self.unknown_idx,
+        ).items():
+            if val is None:
+                continue
+            h5.attrs[key] = val
+
+        # Complete save of state with non-init attrs as values/datasets
+        if self._argsorted_keys is not None:
+            h5['_argsorted_keys'] = self._argsorted_keys
+            if self._argsorted_unknown_idx is not None:
+                h5.attrs['_argsorted_unknown_idx']=self._argsorted_unknown_idx
+
+        keys_dtype = type(next(iter(self)))
+        h5.attrs["keys_dtype"] = str(keys_dtype)
+
+        if keys_dtype in {np.str_, np.string_, object, str}:
+            h5.create_dataset(
+                "keys",
+                data=np.array(self).astype(object),
+                dtype=h5py.special_dtype(vlen=str),
+            )
+        else:
+            h5["keys"] = np.array(self)
+
+        if close:
+            h5.close()
+
+    def save(self, filepath, overwrite=False, sep=None):
         """Saves the labels as an ordered list where the index is implied by
         the order of the labels.
         """
         if len(self) == 0:
             raise ValueError('NominalDataEncoder is empty, nothing to save.')
-        if sep is None:
+        if isinstance(filepath, (h5py.Group, h5py.File)):
+            self.save_h5(filepath, overwrite)
+            return
+
+        if (
+            next(iter(self.inverse)) != self.shift
+            or next(reversed(self.inverse)) != len(self) - 1 + self.shift
+        ):
+            logger.warning(
+                'This does not save the encoder.values(), but the value range '
+                'does not start at self.shift nor end at len(self) - 1 + '
+                'shift. Order is preserved.'
+            )
+
+        ext = os.path.splitext(filepath)[-1]
+        if isinstance(ext, str) and ext in {'.h5', '.hdf5'}:
+            self.save_h5(filepath, overwrite)
+        elif sep is None:
             with open(filepath, 'w') as openf:
                 openf.write('\n'.join([str(x) for x in self.encoder]))
         else:
-            raise NotImplementedError(' '.join([
-                'Saving as any file using separators other than newlines',
-                'between the labels is not yet supported.',
-            ]))
+            raise NotImplementedError(
+                'Saving as any file using separators other than newlines '
+                'between the labels is not yet supported.'
+            )
 
     @staticmethod
-    def load(filepath, sep=None, *args, **kwargs):
+    def load(filepath, *args, **kwargs):
         """Loads the ordered list from the file. Defaults to expect a text file
         where each line contains a single nominal label.
 
@@ -744,7 +806,42 @@ class NominalDataEncoder(object):
         filepath : str
         sep : str = None
         """
-        return load_label_set(filepath, sep, *args, **kwargs)
+        if (
+            isinstance(filepath, str)
+            and os.path.splitext(filepath)[-1].lower() not in {'.h5', '.hdf5'}
+        ):
+            return load_label_set(*args, **kwargs)
+        return NominalDataEncoder.load_h5(filepath)
+
+    @staticmethod
+    def load_h5(h5):
+        close = isinstance(h5, str)
+        if close:
+            h5 = h5py.File(h5, 'r')
+
+        attrs = dict(h5.attrs.items())
+
+        type_regex = re.compile("<class '(?P<type>.+)'>")
+        keys_dtype = attrs.pop('keys_dtype', None)
+        if keys_dtype:
+            keys_dtype = np.dtype(type_regex.findall(keys_dtype)[0])
+
+        _argsorted_unknown_idx = attrs.pop('_argsorted_unknown_idx', None)
+
+        loaded = NominalDataEncoder(
+            np.array(h5['keys'], dtype=keys_dtype),
+            ignore_dups=False,
+            sort_keys=False,
+            **attrs,
+        )
+
+        if '_argsorted_keys' in h5:
+            loaded._argsorted_keys = np.array(h5['_argsorted_keys'])
+            loaded._argsorted_unknown_idx = _argsorted_unknown_idx
+
+        if close:
+            h5.close()
+        return loaded
 
 
 # TODO SparseNominalDataEncoder()

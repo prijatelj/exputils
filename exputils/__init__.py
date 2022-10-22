@@ -1,5 +1,5 @@
 from importlib import import_module
-__version__ = '0.1.7rc4'
+__version__ = '0.1.7rc5'
 
 __all__ = [
     'io',
