@@ -825,9 +825,10 @@ class NominalDataEncoder(object):
         type_regex = re.compile("<class '(?P<type>.+)'>")
         keys_dtype = attrs.pop('keys_dtype', None)
         if keys_dtype:
-            keys_dtype = np.dtype(type_regex.findall(keys_dtype)[0])
+            keys_dtype = type_regex.findall(keys_dtype)[0]
             if keys_dtype in {str(np.str_), str(np.string_)}:
                 keys_dtype = getattr(np, keys_dtype.rpartition('.')[-1])
+            keys_dtype = np.dtype(keys_dtype)
 
         _argsorted_unknown_idx = attrs.pop('_argsorted_unknown_idx', None)
 
