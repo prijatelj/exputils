@@ -730,13 +730,26 @@ class NominalDataEncoder(object):
         if close:
             h5 = h5py.File(create_filepath(h5, overwrite), 'w')
 
+        keys_dtype = type(next(iter(self)))
+        h5.attrs["keys_dtype"] = str(keys_dtype)
+
+        if keys_dtype in {np.str_, np.string_, object, str}:
+            h5.create_dataset(
+                "keys",
+                data=np.array(self).astype(object),
+                dtype=h5py.special_dtype(vlen=str),
+            )
+            keys_dtype = str
+        else:
+            h5["keys"] = np.array(self)
+
         # Complete save of state with the init kwargs as attrs
         for key, val in dict(
             shift=self.shift,
             pos_label=self.pos_label,
             neg_label=self.neg_label,
             sparse_output=self.sparse_output,
-            unknown_key=self.unknown_key,
+            unknown_key=keys_dtype(self.unknown_key),
             unknown_idx=self.unknown_idx,
         ).items():
             if val is None:
@@ -748,18 +761,6 @@ class NominalDataEncoder(object):
             h5['_argsorted_keys'] = self._argsorted_keys
             if self._argsorted_unknown_idx is not None:
                 h5.attrs['_argsorted_unknown_idx']=self._argsorted_unknown_idx
-
-        keys_dtype = type(next(iter(self)))
-        h5.attrs["keys_dtype"] = str(keys_dtype)
-
-        if keys_dtype in {np.str_, np.string_, object, str}:
-            h5.create_dataset(
-                "keys",
-                data=np.array(self).astype(object),
-                dtype=h5py.special_dtype(vlen=str),
-            )
-        else:
-            h5["keys"] = np.array(self)
 
         if close:
             h5.close()
