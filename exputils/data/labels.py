@@ -811,7 +811,7 @@ class NominalDataEncoder(object):
             isinstance(filepath, str)
             and os.path.splitext(filepath)[-1].lower() not in {'.h5', '.hdf5'}
         ):
-            return load_label_set(*args, **kwargs)
+            return load_label_set(filepath, *args, **kwargs)
         return NominalDataEncoder.load_h5(filepath)
 
     @staticmethod
