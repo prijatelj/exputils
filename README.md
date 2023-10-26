@@ -7,8 +7,8 @@ Though if a tool is developed enough, it may be split up into its own package.
 The main components are:
 
 - io: nest namespaces in argparse, default arg parser, ease of saving JSONs, logging, and eventually profiling helpers (e.g. runtime at least)
-    - [docstr](https://github.com/prijatelj/docstr) and soon to be [typing-to-configargparse](https://github.com/prijatelj/typing-to-configargparse) as well, provide the argparse tools now and further development is done through them.
-- data: kfold cv wrapper and abstract data class
+    - [docstr](https://github.com/prijatelj/docstr) provides the argparse tools now and further development is done through them.
+- data: confusion matrices, kfold cv wrapper, and abstract data class
 - visuals: Visualization scripts for common plots via pyplot
 
 ### Design Principles
