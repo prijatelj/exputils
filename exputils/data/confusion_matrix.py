@@ -3,7 +3,7 @@ calculated and certain metrics need calculated FROM the confusion matrix, add
 __tested__ metrics derived from the confusion matrix for efficient
 computation.
 """
-import logging
+from copy import copy, deepcopy
 import os
 
 import h5py
@@ -11,29 +11,42 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 from scipy.stats import gmean, entropy
+
+# TODO refactor: Use of Sklearn is not necessary. I had to implement top-k cms,
+# this is just top-1
 from sklearn.metrics import confusion_matrix
 
 from exputils.io import create_filepath
+from exputils.data.labels import NominalDataEncoder as NDE
+
+import logging
+logger = logging.getLogger(__name__)
 
 # TODO ConfusionTensor: generalize confusion matrix to multiple discrete RVs
 # with a ConfusionTensor class, which would be the parent to ConfusionMatrix
 
 # TODO consider ways to interlink this with LabelEncoder better. If necessary
 
+
 class ConfusionMatrix(object):
-    """Confusion matrix for nominal data that wraps the
-    sklearn.metrics.confusion_matrix. Rows are the known labels and columns are
-    the predictions.
+    """Confusion matrix of occurrences for nominal data.
+    Rows are the known labels and columns are the predictions.
+
+    Attributes
+    ----------
+    mat : np.ndarray
+        The confusion matrix. TODO make mat private marked: _mat
+    label_enc : NominalDataEncoder = None
     """
     def __init__(self, targets, preds=None, labels=None, *args, **kwargs):
         """
         Parameters
         ----------
-        targets : np.ndarray()
+        targets : np.ndarray
             The confusion matrix to wrap, or the target labels.
-        preds : np.ndarray, optional
-        labels : np.ndarray, optional
-            The labels for the row and columns of the confusion matrix
+        preds : np.ndarray = None
+        labels : np.ndarray | NominalDataEncoder = None
+            The labels for the row and columns of the confusion matrix.
         """
 
         # TODO Add optional class weights attribute, allowing it to be
@@ -56,14 +69,14 @@ class ConfusionMatrix(object):
                 # If given an existing matrix as a confusion matrix
                 self.mat = np.array(targets)
 
-                if isinstance(labels, list):
-                    self.labels = np.array(labels)
-                elif isinstance(labels, np.ndarray):
-                    self.labels = labels
+                if isinstance(labels, NDE):
+                    self.label_enc = labels
+                elif labels is not None:
+                    self.label_enc = NDE(labels)
                 elif isinstance(targets, pd.DataFrame):
-                    self.labels = np.array(targets.columns)
+                    self.label_enc = NDE(targets.columns)
                 else:
-                    self.labels = np.arange(len(self.mat))
+                    self.label_enc = NDE(np.arange(len(self.mat)))
             else:
                 raise TypeError(' '.join([
                     'targets type is expected to be of type `np.ndarray`, but',
@@ -71,13 +84,15 @@ class ConfusionMatrix(object):
                 ]))
         elif preds is not None:
             # Calculate the confusion matrix from targets and preds with sklearn
-            if isinstance(labels, list):
-                self.labels = np.array(labels)
-            elif isinstance(labels, np.ndarray):
-                self.labels = labels
+            if isinstance(labels, NDE):
+                self.label_enc = labels
+            elif isinstance(labels, (list, np.ndarray, dict)):
+                self.label_enc = NDE(labels)
             else:
-                self.labels = np.array(list(set(targets) | set(preds)))
+                self.label_enc = NDE(list(set(targets) | set(preds)))
 
+            # TODO refactor: Use of Sklearn is not necessary. I had to
+            # implement top-k cms, this is just top-1
             self.mat = confusion_matrix(
                 targets,
                 preds,
@@ -86,31 +101,126 @@ class ConfusionMatrix(object):
                 **kwargs,
             )
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for key, val in self.__dict__.items():
+            setattr(result, key, deepcopy(val, memo))
+        return result
+
+    # TODO consider nominal data enc set operators that ensure order of
+    # left op right, OrderedDict / OrderedBidict cover this?
     def __add__(self, other):
         """Add two ConfusionMatrices together if of the same shape w/ same
         label set."""
+        return self.join(other, 'left', False)
+
+    @property
+    def labels(self):
+        if self.label_enc is not None:
+            return np.array(self.label_enc)
+
+    def join(self, other, method='left', inplace=False):
+        """Joins this Confusion Matrix with another using a set method over
+        their labels.
+
+        Current version always combines with left union. First, we get the
+        intersecting, left (self) disjoint, and right (other) disjoint label
+        sets. Then, we work off of the self mat, adding the intersecting values
+        from other into correct  spot for self mat. Adding to mat, includes
+        the self disjoint label confusion already. To add the other confusion,
+        the original mat is expanded with zeros to append the new labels to the
+        end. This exteneded area includes three different sub matricies to be
+        filled with from the other's mat. The sub mat where only other disjoint
+        label confusion exists, the sub mat for disjoint other confusion with
+        shared labels, and the inverse, shared labels confusion with the
+        disjoint other labels. This covers all the sub mat blocks that from
+        the new resulting confusion matrix.
+
+        Args
+        ----
+        other : ConfusionMatrix
+        method : str = 'left'
+            Left-preferred  union only atm.
+            May be a str identifier of {'union', 'left', 'right', 'intersect',
+            'disjoint'}.
+        inplace : bool = False
+            If True, updates this self instance with the result of joining.
+
+        Returns
+        -------
+        ConfusionMatrix | None
+            The result of joining the two ConfusionMatrix objects if inplace is
+            False, otherwise None.
+        """
         if not isinstance(other, ConfusionMatrix):
             raise TypeError(
                 'Operator add only supported between two ConfusionMatrices.'
             )
+        set_self = set(self.label_enc)
+        set_other = set(other.label_enc)
 
-        if len(self.labels) != len(other.labels):
-            raise ValueError(' '.join([
-                'The two ConfusionMatrices do not have the same number of',
-                'labels!',
-            ]))
-        if not self.labels == other.labels:
-            if not set(self.labels) == set(other.labels):
-                raise ValueError(
-                    'The other ConfusionMatrix does not have the same labels!'
-                )
+        intersect = list(set_self & set_other)
+        self_intersect = self.label_enc.encode(intersect)
+        other_intersect = other.label_enc.encode(intersect)
 
-            # TODO reorganize other to be added correctly to existing conf mat
-            raise NotImplementedError('Same labels of different order.')
+        #self_disjoint = self.label_enc.encode(list(set_self - set_other))
+        other_disjoint = np.sort(other.label_enc.encode(
+            list(set_other - set_self)
+        ))
 
-        return self.mat + other.mat
+        new_cm = self if inplace else deepcopy(self)
+        n_other = len(other_disjoint)
 
-    def reduce(self, labels, reduced_label, inverse=False):
+        # Sum the mats together aligned by their shared labels.
+        # First, add across the intersecting rows
+        self_intersect_args = self_intersect.reshape(-1, 1).repeat(
+            self_intersect.shape[0],
+            axis=1,
+        )
+        new_cm.mat[self_intersect_args, self_intersect_args.T] += \
+            other.mat[other_intersect][:, other_intersect]
+
+        # Next, Expand mat to include other's disjoint labels.
+        # Add Zeros placeholders for other's disjoint labels
+        new_cm.mat = np.vstack((
+            np.hstack((new_cm.mat, np.zeros([new_cm.mat.shape[0], n_other]))),
+            np.zeros([n_other, new_cm.mat.shape[1] + n_other]),
+        ))
+
+        # Update the submat for other's disjoint labels with their values
+        # Other's disjoint only sub mat: disjoint x disjoint
+        if n_other > 0:
+            new_cm.mat[-n_other:, -n_other:] = \
+                other.mat[other_disjoint][:, other_disjoint]
+
+            # Other's disjoint x intersect; and intersect x disjoint
+            new_cm.mat[-n_other:, self_intersect] = \
+                other.mat[other_disjoint][:, other_intersect]
+            new_cm.mat[self_intersect, -n_other:] = \
+                other.mat[other_intersect][:, other_disjoint]
+
+        # Add other's disjoint labels to self label encoder
+        new_cm.label_enc.append(other.label_enc.decode(other_disjoint))
+
+        if not inplace:
+            return new_cm
+
+    def reduce(
+        self,
+        labels,
+        reduced_label,
+        inverse=False,
+        inplace=False,
+        reduced_idx=-1,
+    ):
         """Reduce confusion matrix to smaller size by mapping labels to one.
 
         Parameters
@@ -124,12 +234,22 @@ class ConfusionMatrix(object):
         inverse : bool, optional
             If True, all of the labels in the confusion matrix NOT in `labels`
             are reduced instead.
+        reduced_idx : int = -1
+            Integer index of where to put the reduced label. Currently only 0
+            and -1 are supported for beginning or end respectively.
+            TODO support if reduced_label in labels, use that index.
 
         Returns
         -------
         ConfusionMatrix
             The resulting reduced confusion matrix.
         """
+        if reduced_idx not in {0, -1}:
+            raise NotImplementedError(
+                'Support for reduced_idx being an integer within [0, '
+                'len(self.labels)] is not yet supported. Please use 0 for '
+                'beginning and -1 for the end.'
+            )
         if inverse:
             if reduced_label in self.labels and reduced_label in labels:
                 labels = np.delete(
@@ -140,7 +260,7 @@ class ConfusionMatrix(object):
             if reduced_label in self.labels and reduced_label not in labels:
                 labels = np.append(labels, reduced_label)
 
-        # TODO the use of the nominal label encoder would be good here.
+        # TODO perhaps the use of the nominal label encoder would be good here.
         mask = np.zeros(len(self.labels)).astype(bool)
         for label in labels:
             mask |= self.labels == label
@@ -152,7 +272,8 @@ class ConfusionMatrix(object):
         else:
             not_mask = np.logical_not(mask)
 
-        # Construct reduced st reduced label is last index
+        # Construct reduced s.t. reduced label is last index
+        # TODO check if np.block is 1) more readable, 2) more efficient.
         reduced_cm = np.vstack((
             np.hstack((
                 self.mat[not_mask][:, not_mask],
@@ -164,10 +285,38 @@ class ConfusionMatrix(object):
             )),
         ))
 
-        return ConfusionMatrix(
-            reduced_cm,
-            labels=np.append(self.labels[not_mask], reduced_label),
-        )
+        # TODO General change location of reduced label, not just to beginning
+
+        new_cm = self if inplace else deepcopy(self)
+        new_cm.mat = reduced_cm
+
+        # Update new label encoder.
+        for label in np.array(new_cm.label_enc)[mask]:
+            if label != reduced_label:
+                new_cm.label_enc.pop(label)
+
+        #labels=np.append(self.labels[not_mask], reduced_label),
+        if reduced_idx == -1:
+            if reduced_label not in new_cm.label_enc:
+                new_cm.label_enc.append(reduced_label)
+        elif reduced_idx == 0:
+            # TODO if reduced_label not in new_cm.label_enc:
+            # Move from last index to first.
+            new_cm.mat = np.block([
+                [new_cm.mat[[-1], [-1]], new_cm.mat[-1, :-1]],
+                [new_cm.mat[:-1, [-1]], new_cm.mat[:-1, :-1]],
+            ])
+
+        # TODO implement: Ensure reduced label is at location in encoder
+        assert reduced_label in new_cm.label_enc
+        reduced_label_enc = new_cm.label_enc.encode([reduced_label])[0]
+        if reduced_idx == -1:
+            assert len(new_cm.label_enc) - 1 == reduced_label_enc
+        else:
+            assert reduced_idx == reduced_label_enc
+
+        if not inplace:
+            return new_cm
 
     # TODO methods for the metrics able to be derived from the confusion matrix
     # f score (1 and beta)
@@ -248,6 +397,11 @@ class ConfusionMatrix(object):
         mask[label] = False
         return self.mat[:, label].sum() - self.mat[label, label]
 
+    # NOTE True Negatives for one class has overlap between the other classes'
+    # counts as per class it becomes the sum of everything outside that
+    # classes' row and column index, naturally resulting in overlap in counts
+    # to other classes true negatives.
+
     def false_rates(self, label):
         """Calcuate the False Positive/Negative Rates for a single label."""
         tp = self.true_positive(label)
@@ -255,10 +409,10 @@ class ConfusionMatrix(object):
         fn = self.false_negative(label)
         tn = self.mat.sum() - tp - fp - fn
 
-        logging.debug('tp = %f', tp)
-        logging.debug('tn = %f', tn)
-        logging.debug('fp = %f', fp)
-        logging.debug('fn = %f', fn)
+        logger.debug('tp = %f', tp)
+        logger.debug('tn = %f', tn)
+        logger.debug('fp = %f', fp)
+        logger.debug('fn = %f', fn)
 
         fpr = fp / (fp + tn)
         fnr = fn / (tp + fn)
@@ -284,13 +438,15 @@ class ConfusionMatrix(object):
 
         # TODO be aware that NaNs occur at times, and the below may need a
         # nonzero mask like mutual information did!
-
+        denominator = (
+            np.sqrt(total_sqrd - np.dot(predicted, predicted))
+            * np.sqrt(total_sqrd - np.dot(actual, actual))
+        )
+        if denominator == 0:
+            return 0
         return (
             (correct_pred * self.mat.sum() - np.dot(actual, predicted)) /
-            (
-                np.sqrt(total_sqrd - np.dot(predicted, predicted))
-                * np.sqrt(total_sqrd - np.dot(actual, actual))
-            )
+            denominator
         )
 
     def mutual_information(self, normalized=None, weights=None, base=None):
@@ -406,7 +562,7 @@ class ConfusionMatrix(object):
                 - mutual_info
             )
 
-        raise ValueError('Unexpected value for `normalized`: {normalized}')
+        raise ValueError(f'Unexpected value for `normalized`: {normalized}')
 
     def entropy(self, axis, base=None):
         """Returns the entropy of either the predictions or actual values."""
@@ -480,30 +636,38 @@ class ConfusionMatrix(object):
     def save(
         self,
         filepath,
-        filetype='csv',
         conf_mat_key='confusion_matrix',
         overwrite=False,
         *args,
         **kwargs,
     ):
         """Saves the current confusion matrix to the given filepath."""
-        if not isinstance(filetype, str):
+        ext = os.path.splitext(filepath)[-1]
+
+        if ext not in {'.csv', '.tsv', '.hdf5', '.h5'}:
             raise TypeError(' '.join([
-                'Expected filetype to be a str: "csv", "tsv", "hdf5", or',
-                f'"h5"; not type `{type(filetype)}`',
+                'Expected file extention: ".csv", ".tsv", ".hdf5", or',
+                f'".h5"; not  `{ext}`',
             ]))
 
-        filetype = filetype.lower()
         filepath = create_filepath(filepath, overwrite=overwrite)
 
-        if filetype == 'csv' or filetype == 'tsv':
+        if ext == '.csv':
             pd.DataFrame(self.mat, columns=self.labels).to_csv(
                 filepath,
                 index=False,
                 *args,
                 **kwargs,
             )
-        else: #HDF5
+        elif ext == '.tsv':
+            pd.DataFrame(self.mat, columns=self.labels).to_csv(
+                filepath,
+                index=False,
+                sep='\t',
+                *args,
+                **kwargs,
+            )
+        else: # HDF5 elif ext in {'.hdf5', '.h5'}:
             with h5py.File(filepath, 'r') as h5f:
                 h5f['labels'] = self.labels.astype(np.string_)
                 h5f[conf_mat_key] = self.mat
@@ -589,11 +753,11 @@ class ConfusionMatrix(object):
             with h5py.File(filepath, 'r') as h5f:
                 if 'labels' in h5f.keys():
                     if names is not None:
-                        logging.warning(' '.join([
-                            '`names` is provided while "labels" exists in the',
-                            'hdf5 file! `names` is prioritized of the labels',
-                            'in hdf5 file.',
-                        ]))
+                        logger.warning(
+                            '`names` is provided while "labels" exists in the '
+                            'hdf5 file! `names` is prioritized of the labels '
+                            'in hdf5 file.'
+                        )
                         labels = names
                     else:
                         labels = h5f['labels'][:]

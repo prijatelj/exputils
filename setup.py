@@ -21,7 +21,7 @@ setup(
     name=project_name,
     version=get_property('__version__', project_name),
     author='Derek S. Prijatelj',
-    author_email='dprijate@nd.edu',
+    author_email='derek.s.prijatelj@gmail.com',
     packages=[
         project_name,
         f'{project_name}.data',
